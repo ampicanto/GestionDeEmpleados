@@ -1,0 +1,355 @@
+import { useEffect, useMemo, useState } from 'react'
+import '../App.css'
+import {
+  FaChartBar,
+  FaUsers,
+  FaHardHat,
+  FaBell,
+  FaCog,
+  FaSearch,
+  FaPlus,
+  FaChevronRight,
+} from 'react-icons/fa'
+import NuevoProyecto from '../components/NuevoProyecto'
+
+const summaryCards = [
+  { title: 'Proyectos activos', value: '24', detail: '+6 esta semana', icon: <FaHardHat /> },
+  { title: 'Equipo asignado', value: '18', detail: '3 disponibles', icon: <FaUsers /> },
+  { title: 'Indicador de obra', value: '87%', detail: 'Cumplimiento sólido', icon: <FaChartBar /> },
+]
+
+const pendingTasks = [
+  { title: 'Revisión de permisos', time: 'Hoy · 09:00' },
+  { title: 'Actualización de cronograma', time: 'Hoy · 12:30' },
+  { title: 'Seguimiento de seguridad', time: 'Mañana · 08:00' },
+]
+
+const recentProjects = [
+  {
+    name: 'Planta de procesamiento',
+    status: 'En ejecución',
+    color: 'green',
+    assigned_employees: ['Carlos Méndez', 'Mónica Ruiz'],
+    attendance: '2/2 presentes',
+  },
+  {
+    name: 'Infraestructura logística',
+    status: 'En revisión',
+    color: 'blue',
+    assigned_employees: ['Luis Ortega'],
+    attendance: '1/1 presente',
+  },
+  {
+    name: 'Obras de acceso',
+    status: 'Completado',
+    color: 'gray',
+    assigned_employees: [],
+    attendance: '0/0 presentes',
+  },
+]
+
+const teamMembers = [
+  { name: 'Carlos Méndez', role: 'Supervisor de obra' },
+  { name: 'Mónica Ruiz', role: 'Ingeniera industrial' },
+  { name: 'Luis Ortega', role: 'Coordinador de seguridad' },
+]
+
+function AdminPage() {
+  const [activeSection, setActiveSection] = useState('Inicio')
+  const [search, setSearch] = useState('')
+  const [doneTasks, setDoneTasks] = useState([])
+  const [showNew, setShowNew] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false)
+  const [localProjects, setLocalProjects] = useState([])
+
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem('localProjects') || '[]')
+    setLocalProjects(saved)
+  }, [])
+
+  const loadLocalProjects = () => {
+    const saved = JSON.parse(localStorage.getItem('localProjects') || '[]')
+    setLocalProjects(saved)
+  }
+
+  const normalizedSearch = search.toLowerCase()
+
+  const filteredProjects = useMemo(
+    () =>
+      [...localProjects, ...recentProjects]
+        .map((project) => ({
+          ...project,
+          assigned_employees: project.assigned_employees || [],
+          attendance:
+            project.attendance ||
+            `${(project.assigned_employees || []).length}/${(project.assigned_employees || []).length} presentes`,
+        }))
+        .filter((project) =>
+          [project.name, project.status, project.jornada, project.lat?.toString(), project.lng?.toString()]
+            .filter(Boolean)
+            .some((value) => value.toLowerCase().includes(normalizedSearch))
+        ),
+    [localProjects, normalizedSearch]
+  )
+
+  const filteredTasks = useMemo(
+    () =>
+      pendingTasks.filter((task) =>
+        [task.title, task.time].some((value) => value.toLowerCase().includes(normalizedSearch))
+      ),
+    [normalizedSearch]
+  )
+
+  const filteredMembers = useMemo(
+    () =>
+      teamMembers.filter((member) =>
+        [member.name, member.role].some((value) => value.toLowerCase().includes(normalizedSearch))
+      ),
+    [normalizedSearch]
+  )
+
+  const toggleTask = (title) => {
+    setDoneTasks((prev) => (prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]))
+  }
+
+  const heroCopy = {
+    Inicio: {
+      title: 'Bienvenido al centro de control de operaciones.',
+      text: 'Monitorea proyectos, supervisa al equipo y mantén visibilidad de cada avance en tiempo real.',
+      badge: 'Resumen ejecutivo',
+    },
+    Proyectos: {
+      title: 'Gestiona los proyectos con una vista clara del avance.',
+      text: 'Revisa el estado de cada obra, prioriza tareas y mantén el ritmo de ejecución bajo control.',
+      badge: 'Vista de proyectos',
+    },
+    Equipo: {
+      title: 'Coordina al equipo con información de apoyo en tiempo real.',
+      text: 'Observa colaboradores, roles y cargas de trabajo desde un panel ágil y ordenado.',
+      badge: 'Gestión de equipo',
+    },
+    Reportes: {
+      title: 'Consulta indicadores clave para tomar decisiones.',
+      text: 'Analiza desempeño, cumplimiento y avance general con datos simulados listos para integrar.',
+      badge: 'Reportes',
+    },
+    Configuración: {
+      title: 'Ajusta las preferencias del panel operativo.',
+      text: 'Configura módulos, alertas y estructura del entorno sin cambiar la experiencia del usuario.',
+      badge: 'Configuración',
+    },
+  }
+
+  return (
+    <div className="admin-page">
+      <aside className="admin-sidebar">
+        <div className="admin-brand">
+          <div className="admin-brand-mark">IC</div>
+          <div>
+            <h2>Ingenio Constructora</h2>
+            <p>Panel administrativo</p>
+          </div>
+        </div>
+
+        <nav className="admin-nav">
+          {['Inicio', 'Proyectos', 'Equipo', 'Reportes', 'Configuración'].map((item) => (
+            <button
+              key={item}
+              type="button"
+              className={`admin-nav-item ${activeSection === item ? 'active' : ''}`}
+              onClick={() => setActiveSection(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </nav>
+
+        <div className="admin-sidebar-card">
+          <p className="sidebar-label">Estado del sistema</p>
+          <h3>Operación estable</h3>
+          <p>Todos los módulos principales están disponibles y sincronizados.</p>
+        </div>
+      </aside>
+
+      <main className="admin-main">
+        <header className="admin-topbar">
+          <div className="admin-search">
+            <FaSearch />
+            <input
+              type="text"
+              placeholder="Buscar proyecto, tarea o colaborador"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+
+          <div className="admin-topbar-actions">
+            <div className="settings-menu-wrapper">
+              <button
+                type="button"
+                className="admin-icon-btn"
+                onClick={() => {
+                  setShowNotifications((prev) => !prev)
+                  setShowSettingsMenu(false)
+                }}
+              >
+                <FaBell />
+              </button>
+              {showNotifications && (
+                <div className="notification-menu">
+                  <div className="notification-header">Notificaciones</div>
+                  <button type="button" className="notification-item">Nuevo mensaje de obra</button>
+                  <button type="button" className="notification-item">Permisos pendientes para revisión</button>
+                  <button type="button" className="notification-item">Actualización de cronograma disponible</button>
+                  <button type="button" className="notification-small-btn" onClick={() => setShowNotifications(false)}>Cerrar</button>
+                </div>
+              )}
+            </div>
+            <div className="settings-menu-wrapper">
+              <button
+                type="button"
+                className="admin-icon-btn"
+                onClick={() => {
+                  setShowSettingsMenu((prev) => !prev)
+                  setShowNotifications(false)
+                }}
+              >
+                <FaCog />
+              </button>
+              {showSettingsMenu && (
+                <div className="settings-menu">
+                  <button type="button" className="settings-menu-item" onClick={() => alert('Cerrar sesión')}>Cerrar sesión</button>
+                </div>
+              )}
+            </div>
+            <button type="button" className="admin-primary-btn" onClick={() => setShowNew(true)}>
+              <FaPlus />
+              <span>Nuevo proyecto</span>
+            </button>
+          </div>
+        </header>
+
+        <section className="admin-hero">
+          <div>
+            <p className="eyebrow">{heroCopy[activeSection].badge}</p>
+            <h1>{heroCopy[activeSection].title}</h1>
+            <p className="admin-hero-text">{heroCopy[activeSection].text}</p>
+          </div>
+          <div className="admin-hero-card">
+            <p>Progreso general</p>
+            <strong>82%</strong>
+            <span>Planificación y obras en marcha</span>
+          </div>
+        </section>
+
+        <section className="admin-grid">
+          {summaryCards.map((card) => (
+            <article className="admin-card" key={card.title}>
+              <div className="admin-card-icon">{card.icon}</div>
+              <div>
+                <h3>{card.value}</h3>
+                <p>{card.title}</p>
+                <span>{card.detail}</span>
+              </div>
+            </article>
+          ))}
+        </section>
+
+        <section className="admin-grid admin-grid-2">
+          <div className="admin-panel">
+            <div className="admin-panel-header">
+              <div>
+                <p className="eyebrow">Tareas pendientes</p>
+                <h2>Actividad prioritaria</h2>
+              </div>
+              <button type="button" className="admin-link-btn">
+                Ver todo <FaChevronRight />
+              </button>
+            </div>
+
+            <div className="admin-list">
+              {filteredTasks.map((task) => {
+                const isDone = doneTasks.includes(task.title)
+                return (
+                  <div className="admin-list-item" key={task.title}>
+                    <div>
+                      <h3>{task.title}</h3>
+                      <p>{task.time}</p>
+                    </div>
+                    <div className="admin-task-actions">
+                      <span className={`admin-pill ${isDone ? 'done' : ''}`}>{isDone ? 'Completada' : 'Pendiente'}</span>
+                      <button type="button" className="admin-link-btn small" onClick={() => toggleTask(task.title)}>
+                        {isDone ? 'Deshacer' : 'Marcar'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+              {filteredTasks.length === 0 && <p className="admin-empty-state">No hay tareas que coincidan con la búsqueda.</p>}
+            </div>
+          </div>
+
+          <div className="admin-panel">
+            <div className="admin-panel-header">
+              <div>
+                <p className="eyebrow">Proyectos</p>
+                <h2>Avances recientes</h2>
+              </div>
+            </div>
+
+            <div className="admin-project-list">
+              {filteredProjects.map((project) => (
+                <div className="admin-project-item" key={project.name}>
+                  <div>
+                    <h3>{project.name}</h3>
+                    <p>{project.status}</p>
+                    <div className="project-attendance">Asistencia: {project.attendance}</div>
+                    {project.assigned_employees.length > 0 && (
+                      <div className="project-employees">Empleados: {project.assigned_employees.join(', ')}</div>
+                    )}
+                  </div>
+                  <span className={`project-dot ${project.color}`} />
+                </div>
+              ))}
+              {filteredProjects.length === 0 && <p className="admin-empty-state">No hay proyectos que coincidan con la búsqueda.</p>}
+            </div>
+          </div>
+        </section>
+
+        <section className="admin-panel admin-team-panel">
+          <div className="admin-panel-header">
+            <div>
+              <p className="eyebrow">Equipo</p>
+              <h2>Colaboradores destacados</h2>
+            </div>
+          </div>
+
+          <div className="admin-team-list">
+            {filteredMembers.map((member) => (
+              <div className="admin-team-item" key={member.name}>
+                <div className="admin-avatar">{member.name.charAt(0)}</div>
+                <div>
+                  <h3>{member.name}</h3>
+                  <p>{member.role}</p>
+                </div>
+              </div>
+            ))}
+            {filteredMembers.length === 0 && <p className="admin-empty-state">No hay colaboradores que coincidan con la búsqueda.</p>}
+          </div>
+        </section>
+      </main>
+      {showNew && (
+        <NuevoProyecto
+          teamMembers={teamMembers}
+          onClose={() => setShowNew(false)}
+          onCreated={() => {
+            loadLocalProjects()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+export default AdminPage

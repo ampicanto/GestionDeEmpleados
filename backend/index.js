@@ -14,6 +14,10 @@ app.use(cors({
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
+// Routers
+const projectsRouter = require('./controllers/projects')
+app.use('/api/projects', projectsRouter)
+
 app.get('/', (req, res) => {
   res.json({
     message: 'API de Ingenio Constructora',

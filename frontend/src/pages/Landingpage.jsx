@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react'
 import '../App.css'
-import { FaRegUser, FaSignInAlt, FaHardHat, FaTools, FaLeaf } from 'react-icons/fa'
+import { FaRegUser, FaSignInAlt, FaHardHat, FaTools, FaLeaf, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 
 const stats = [
   { value: '25+', label: 'años de experiencia' },
@@ -32,7 +33,49 @@ const process = [
   { step: '04', title: 'Mantenimiento', description: 'Acompañamos la vida útil del activo con soporte continuo y mejora.' },
 ]
 
+const showcaseSlides = [
+  {
+    tag: 'Obra civil',
+    title: 'Infraestructura industrial preparada para crecer',
+    description: 'Proyectos ejecutados con precisión, seguridad y continuidad operativa.',
+    image: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    tag: 'Ingeniería',
+    title: 'Soluciones eficientes para entornos complejos',
+    description: 'Diseño técnico con enfoque en productividad, mantenimiento y desempeño.',
+    image: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    tag: 'Sostenibilidad',
+    title: 'Construcción responsable y de largo plazo',
+    description: 'Estrategias que potencian la operación sin comprometer la eficiencia.',
+    image: 'https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?auto=format&fit=crop&w=1200&q=80',
+  },
+]
+
 function Landingpage() {
+  const [activeSlide, setActiveSlide] = useState(0)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % showcaseSlides.length)
+    }, 4500)
+
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const activeSlideData = showcaseSlides[activeSlide]
+
+  const changeSlide = (direction) => {
+    if (direction === 'next') {
+      setActiveSlide((prev) => (prev + 1) % showcaseSlides.length)
+      return
+    }
+
+    setActiveSlide((prev) => (prev - 1 + showcaseSlides.length) % showcaseSlides.length)
+  }
+
   return (
     <div className="landing-page">
       <header className="hero-section">
@@ -72,15 +115,47 @@ function Landingpage() {
           </div>
         </div>
 
-        <aside className="hero-card">
-          <div className="hero-card-topline">Por qué nos eligen</div>
-          <h2>Soluciones que combinan tradición, tecnología y rigor operativo.</h2>
-          <ul>
-            <li>Planificación integral de obra</li>
-            <li>Equipo especializado en entornos industriales</li>
-            <li>Enfoque en seguridad, continuidad y rentabilidad</li>
-          </ul>
-        </aside>
+        <div className="hero-stack">
+          <aside className="hero-card">
+            <div className="hero-card-topline">Por qué nos eligen</div>
+            <h2>Soluciones que combinan tradición, tecnología y rigor operativo.</h2>
+            <ul>
+              <li>Planificación integral de obra</li>
+              <li>Equipo especializado en entornos industriales</li>
+              <li>Enfoque en seguridad, continuidad y rentabilidad</li>
+            </ul>
+          </aside>
+
+          <div className="hero-visual" aria-label="Galería de proyectos destacados">
+            <div
+              className="hero-visual-image"
+              style={{ backgroundImage: `url(${activeSlideData.image})` }}
+            />
+            <div className="hero-visual-overlay">
+              <span className="hero-visual-badge">{activeSlideData.tag}</span>
+              <h3>{activeSlideData.title}</h3>
+              <p>{activeSlideData.description}</p>
+            </div>
+            <div className="carousel-controls">
+              <button type="button" className="carousel-btn" onClick={() => changeSlide('prev')}>
+                <FaChevronLeft />
+              </button>
+              <div className="carousel-dots">
+                {showcaseSlides.map((slide, index) => (
+                  <button
+                    key={slide.tag}
+                    type="button"
+                    className={`carousel-dot ${index === activeSlide ? 'active' : ''}`}
+                    onClick={() => setActiveSlide(index)}
+                  />
+                ))}
+              </div>
+              <button type="button" className="carousel-btn" onClick={() => changeSlide('next')}>
+                <FaChevronRight />
+              </button>
+            </div>
+          </div>
+        </div>
       </header>
 
       <main>
