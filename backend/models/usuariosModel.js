@@ -4,16 +4,21 @@ const { pool } = require("../config/db");
 async function obtenerUsuarios() {
   const [rows] = await pool.query(`
     SELECT
-      id,
-      rol,
-      nombre,
-      email,
-      dni,
-      local_id,
-      activo,
-      creado_en
-    FROM usuarios
-    ORDER BY id ASC
+      u.id,
+      u.rol_id,
+      r.nombre AS rol,
+      u.puesto_id,
+      p.nombre AS puesto,
+      u.nombre,
+      u.email,
+      u.dni,
+      u.local_id,
+      u.activo,
+      u.creado_en
+    FROM usuarios u
+    INNER JOIN roles r ON u.rol_id = r.id
+    LEFT JOIN puestos p ON u.puesto_id = p.id
+    ORDER BY u.id ASC
   `);
 
   return rows;
@@ -24,14 +29,37 @@ async function obtenerUsuarioPorId(id) {
   const [rows] = await pool.query(
     `
     SELECT
+      u.id,
+      u.rol_id,
+      r.nombre AS rol,
+      u.puesto_id,
+      p.nombre AS puesto,
+      u.nombre,
+      u.email,
+      u.dni,
+      u.local_id,
+      u.activo,
+      u.creado_en
+    FROM usuarios u
+    INNER JOIN roles r ON u.rol_id = r.id
+    LEFT JOIN puestos p ON u.puesto_id = p.id
+    WHERE u.id = ?
+    `,
+    [id]
+  );
+
+  return rows[0];
+}
+
+// Obtener datos internos de seguridad de un usuario
+// NO se devuelve directamente al cliente
+async function obtenerCredencialesUsuario(id) {
+  const [rows] = await pool.query(
+    `
+    SELECT
       id,
-      rol,
-      nombre,
-      email,
-      dni,
-      local_id,
-      activo,
-      creado_en
+      password_hash,
+      pin_hash
     FROM usuarios
     WHERE id = ?
     `,
@@ -41,13 +69,47 @@ async function obtenerUsuarioPorId(id) {
   return rows[0];
 }
 
+// Crear un nuevo usuario
+async function crearUsuario(datos) {
+  const [resultado] = await pool.query(
+    `
+    INSERT INTO usuarios (
+      rol_id,
+      puesto_id,
+      nombre,
+      email,
+      password_hash,
+      dni,
+      pin_hash,
+      local_id,
+      activo
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      datos.rol_id,
+      datos.puesto_id,
+      datos.nombre,
+      datos.email,
+      datos.password_hash,
+      datos.dni,
+      datos.pin_hash,
+      datos.local_id,
+      datos.activo
+    ]
+  );
+
+  return resultado;
+}
+
 // Actualizar un usuario
 async function actualizarUsuario(id, datos) {
   const [resultado] = await pool.query(
     `
     UPDATE usuarios
     SET
-      rol = ?,
+      rol_id = ?,
+      puesto_id = ?,
       nombre = ?,
       email = ?,
       password_hash = ?,
@@ -58,7 +120,8 @@ async function actualizarUsuario(id, datos) {
     WHERE id = ?
     `,
     [
-      datos.rol,
+      datos.rol_id,
+      datos.puesto_id,
       datos.nombre,
       datos.email,
       datos.password_hash,
@@ -87,42 +150,11 @@ async function desactivarUsuario(id) {
   return resultado;
 }
 
-
-// Crear un nuevo usuario
-async function crearUsuario(datos) {
-  const [resultado] = await pool.query(
-    `
-    INSERT INTO usuarios (
-      rol,
-      nombre,
-      email,
-      password_hash,
-      dni,
-      pin_hash,
-      local_id,
-      activo
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-    [
-      datos.rol,
-      datos.nombre,
-      datos.email,
-      datos.password_hash,
-      datos.dni,
-      datos.pin_hash,
-      datos.local_id,
-      datos.activo
-    ]
-  );
-
-  return resultado;
-}
-
 module.exports = {
   obtenerUsuarios,
   obtenerUsuarioPorId,
+  obtenerCredencialesUsuario,
   crearUsuario,
   actualizarUsuario,
-  desactivarUsuario,
+  desactivarUsuario
 };

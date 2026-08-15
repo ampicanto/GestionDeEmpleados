@@ -54,7 +54,8 @@ async function obtenerUsuario(req, res) {
 async function crearUsuario(req, res) {
   try {
     const {
-      rol,
+      rol_id,
+      puesto_id,
       nombre,
       email,
       password,
@@ -64,15 +65,17 @@ async function crearUsuario(req, res) {
     } = req.body;
 
     // Validaciones básicas
-    if (!rol || !nombre) {
+    if (!rol_id || !nombre) {
       return res.status(400).json({
         ok: false,
         message: "Rol y nombre son obligatorios"
       });
     }
-    const rolesValidos = ["super_admin", "admin", "empleado"];
 
-    if (!rolesValidos.includes(rol)) {
+    // Roles válidos según la tabla roles
+    const rolesValidos = [1, 2, 3];
+
+    if (!rolesValidos.includes(Number(rol_id))) {
       return res.status(400).json({
         ok: false,
         message: "Rol no válido"
@@ -80,7 +83,8 @@ async function crearUsuario(req, res) {
     }
 
     const datos = {
-      rol,
+      rol_id: Number(rol_id),
+      puesto_id: puesto_id || null,
       nombre,
       email: null,
       password_hash: null,
@@ -90,8 +94,8 @@ async function crearUsuario(req, res) {
       activo: true
     };
 
-    // Administrador o Super Admin
-    if (rol === "admin" || rol === "super_admin") {
+    // Super Admin o Administrador
+    if (Number(rol_id) === 1 || Number(rol_id) === 2) {
 
       if (!email || !password) {
         return res.status(400).json({
@@ -102,11 +106,10 @@ async function crearUsuario(req, res) {
 
       datos.email = email;
       datos.password_hash = await bcrypt.hash(password, 10);
-
     }
 
     // Empleado
-    if (rol === "empleado") {
+    if (Number(rol_id) === 3) {
 
       if (!dni || !pin) {
         return res.status(400).json({
@@ -117,7 +120,6 @@ async function crearUsuario(req, res) {
 
       datos.dni = dni;
       datos.pin_hash = await bcrypt.hash(pin, 10);
-
     }
 
     const resultado = await usuariosModel.crearUsuario(datos);
@@ -129,7 +131,6 @@ async function crearUsuario(req, res) {
     });
 
   } catch (error) {
-
     console.error(error);
 
     if (error.code === "ER_DUP_ENTRY") {
@@ -143,7 +144,6 @@ async function crearUsuario(req, res) {
       ok: false,
       message: "Error al crear el usuario"
     });
-
   }
 }
 
@@ -153,7 +153,8 @@ async function actualizarUsuario(req, res) {
     const { id } = req.params;
 
     const {
-      rol,
+      rol_id,
+      puesto_id,
       nombre,
       email,
       password,
@@ -173,17 +174,21 @@ async function actualizarUsuario(req, res) {
       });
     }
 
+    // Obtener credenciales actuales
+    const credenciales = await usuariosModel.obtenerCredencialesUsuario(id);
+
     // Validaciones básicas
-    if (!rol || !nombre) {
+    if (!rol_id || !nombre) {
       return res.status(400).json({
         ok: false,
         message: "Rol y nombre son obligatorios"
       });
     }
 
-    const rolesValidos = ["super_admin", "admin", "empleado"];
+    // Roles válidos según la nueva BD
+    const rolesValidos = [1, 2, 3];
 
-    if (!rolesValidos.includes(rol)) {
+    if (!rolesValidos.includes(Number(rol_id))) {
       return res.status(400).json({
         ok: false,
         message: "Rol no válido"
@@ -191,18 +196,19 @@ async function actualizarUsuario(req, res) {
     }
 
     const datos = {
-      rol,
+      rol_id: Number(rol_id),
+      puesto_id: puesto_id || null,
       nombre,
       email: null,
-      password_hash: null,
+      password_hash: credenciales.password_hash,
       dni: null,
-      pin_hash: null,
+      pin_hash: credenciales.pin_hash,
       local_id: local_id || null,
       activo: activo !== undefined ? activo : true
     };
 
-    // Administrador o Super Admin
-    if (rol === "admin" || rol === "super_admin") {
+    // Super Admin o Administrador
+    if (Number(rol_id) === 1 || Number(rol_id) === 2) {
 
       if (!email) {
         return res.status(400).json({
@@ -213,15 +219,18 @@ async function actualizarUsuario(req, res) {
 
       datos.email = email;
 
+      // Cambiar contraseña solamente si se envió una nueva
       if (password) {
         datos.password_hash = await bcrypt.hash(password, 10);
-      } else {
-        datos.password_hash = usuario.password_hash;
       }
+
+      // Estos campos no corresponden a admin
+      datos.dni = null;
+      datos.pin_hash = null;
     }
 
     // Empleado
-    if (rol === "empleado") {
+    if (Number(rol_id) === 3) {
 
       if (!dni) {
         return res.status(400).json({
@@ -232,11 +241,14 @@ async function actualizarUsuario(req, res) {
 
       datos.dni = dni;
 
+      // Cambiar PIN solamente si se envió uno nuevo
       if (pin) {
         datos.pin_hash = await bcrypt.hash(pin, 10);
-      } else {
-        datos.pin_hash = usuario.pin_hash;
       }
+
+      // Estos campos no corresponden a empleado
+      datos.email = null;
+      datos.password_hash = null;
     }
 
     const resultado = await usuariosModel.actualizarUsuario(id, datos);
@@ -248,7 +260,6 @@ async function actualizarUsuario(req, res) {
     });
 
   } catch (error) {
-
     console.error(error);
 
     if (error.code === "ER_DUP_ENTRY") {
