@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd \"c:\\\\Users\\\\Ricardo\\\\Desktop\\\\PROYECTO CONSTRUCTORA\\\\frontend\"; npm install$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
