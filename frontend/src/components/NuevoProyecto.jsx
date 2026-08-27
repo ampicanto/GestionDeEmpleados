@@ -84,23 +84,7 @@ export default function NuevoProyecto({ teamMembers = [], onClose = () => {}, on
     )
   }
 
-  const saveLocalProject = (payload) => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('localProjects') || '[]')
-      saved.push({
-        ...payload,
-        status: 'Guardado localmente',
-        color: 'green',
-        assigned_employees: payload.assigned_employees || [],
-        savedAt: new Date().toISOString(),
-      })
-      localStorage.setItem('localProjects', JSON.stringify(saved))
-    } catch (error) {
-      console.warn('No se pudo guardar el proyecto localmente:', error)
-    }
-  }
-
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault()
     if (!isLocationValid) {
       return alert('Selecciona una ubicación válida en el mapa antes de crear el proyecto.')
@@ -109,12 +93,32 @@ export default function NuevoProyecto({ teamMembers = [], onClose = () => {}, on
     setIsSubmitting(true)
     setSavingMessage(null)
 
-    const payload = { name, assigned_employees: assigned, jornada, lat, lng, radius_m: Number(radius) }
-    saveLocalProject(payload)
-    setSavingMessage('Proyecto guardado localmente.')
-    onCreated(payload)
-    onClose()
-    setIsSubmitting(false)
+    const payload = { name: name.trim(), assigned_employees: assigned, jornada, lat, lng, radius_m: Number(radius) }
+
+    try {
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/projects`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      })
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.message || 'No se pudo crear el proyecto')
+      }
+
+      setSavingMessage('Proyecto creado correctamente.')
+      onCreated({ ...payload, id: result.id, status: 'En ejecución', color: 'green' })
+      onClose()
+    } catch (error) {
+      setSavingMessage(error.message || 'No se pudo conectar con el servidor.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -124,7 +128,7 @@ export default function NuevoProyecto({ teamMembers = [], onClose = () => {}, on
           <div>
             <h3>Nuevo proyecto</h3>
             <p className="modal-card-subtitle">
-              Selecciona la ubicación en el mapa, asigna empleados y guarda la información localmente.
+              Selecciona la ubicación en el mapa, asigna empleados y guarda la información en el servidor.
             </p>
           </div>
           <button type="button" onClick={onClose} className="btn-secondary btn-close">

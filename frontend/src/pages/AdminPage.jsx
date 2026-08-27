@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import '../App.css'
 import {
   FaChartBar,
@@ -48,13 +49,8 @@ const recentProjects = [
   },
 ]
 
-const teamMembers = [
-  { name: 'Carlos Méndez', role: 'Supervisor de obra' },
-  { name: 'Mónica Ruiz', role: 'Ingeniera industrial' },
-  { name: 'Luis Ortega', role: 'Coordinador de seguridad' },
-]
-
 function AdminPage() {
+  const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState('Inicio')
   const [search, setSearch] = useState('')
   const [doneTasks, setDoneTasks] = useState([])
@@ -62,15 +58,42 @@ function AdminPage() {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showSettingsMenu, setShowSettingsMenu] = useState(false)
   const [localProjects, setLocalProjects] = useState([])
+  const [teamMembers, setTeamMembers] = useState([])
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('localProjects') || '[]')
-    setLocalProjects(saved)
+    loadProjects()
+    loadEmployees()
   }, [])
 
-  const loadLocalProjects = () => {
-    const saved = JSON.parse(localStorage.getItem('localProjects') || '[]')
-    setLocalProjects(saved)
+  const loadProjects = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/projects`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
+      })
+      if (!response.ok) throw new Error('No se pudieron cargar los proyectos')
+      setLocalProjects(await response.json())
+    } catch (error) {
+      console.error(error)
+      setLocalProjects([])
+    }
+  }
+
+  const loadEmployees = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/usuarios/empleados`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` },
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.message || 'No se pudieron cargar los empleados')
+      setTeamMembers((result.data || []).map((employee) => ({
+        ...employee,
+        name: employee.nombre || employee.name || 'Empleado sin nombre',
+        role: employee.puesto || employee.rol || 'Empleado',
+      })))
+    } catch (error) {
+      console.error(error)
+      setTeamMembers([])
+    }
   }
 
   const normalizedSearch = search.toLowerCase()
@@ -104,13 +127,21 @@ function AdminPage() {
   const filteredMembers = useMemo(
     () =>
       teamMembers.filter((member) =>
-        [member.name, member.role].some((value) => value.toLowerCase().includes(normalizedSearch))
+        [member.name, member.role, member.puesto, member.rol]
+          .some((value) => String(value || '').toLowerCase().includes(normalizedSearch))
       ),
-    [normalizedSearch]
+    [teamMembers, normalizedSearch]
   )
 
   const toggleTask = (title) => {
     setDoneTasks((prev) => (prev.includes(title) ? prev.filter((item) => item !== title) : [...prev, title]))
+  }
+
+  const logout = () => {
+    localStorage.removeItem('authToken')
+    localStorage.removeItem('authUser')
+    setShowSettingsMenu(false)
+    navigate('/login')
   }
 
   const heroCopy = {
@@ -219,7 +250,7 @@ function AdminPage() {
               </button>
               {showSettingsMenu && (
                 <div className="settings-menu">
-                  <button type="button" className="settings-menu-item" onClick={() => alert('Cerrar sesión')}>Cerrar sesión</button>
+                  <button type="button" className="settings-menu-item" onClick={logout}>Cerrar sesión</button>
                 </div>
               )}
             </div>
@@ -327,11 +358,11 @@ function AdminPage() {
 
           <div className="admin-team-list">
             {filteredMembers.map((member) => (
-              <div className="admin-team-item" key={member.name}>
-                <div className="admin-avatar">{member.name.charAt(0)}</div>
+              <div className="admin-team-item" key={member.id || member.name}>
+                <div className="admin-avatar">{String(member.name || 'E').charAt(0).toUpperCase()}</div>
                 <div>
-                  <h3>{member.name}</h3>
-                  <p>{member.role}</p>
+                  <h3>{member.name || 'Empleado sin nombre'}</h3>
+                  <p>{member.role || 'Empleado'}</p>
                 </div>
               </div>
             ))}
@@ -344,7 +375,7 @@ function AdminPage() {
           teamMembers={teamMembers}
           onClose={() => setShowNew(false)}
           onCreated={() => {
-            loadLocalProjects()
+            loadProjects()
           }}
         />
       )}

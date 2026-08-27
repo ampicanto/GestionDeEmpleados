@@ -1,6 +1,9 @@
 const express = require('express')
 const router = express.Router()
 const { pool } = require('../config/db')
+const { authenticate, requireAdmin } = require('../middleware/auth')
+
+router.use(authenticate, requireAdmin)
 
 // Inicializar tabla si no existe
 async function ensureTable() {

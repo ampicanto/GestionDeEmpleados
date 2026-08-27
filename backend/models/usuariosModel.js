@@ -1,5 +1,31 @@
 const { pool } = require("../config/db");
 
+// Buscar usuario por email o DNI (para Login)
+async function obtenerUsuarioPorCredencial(credencial) {
+  const [rows] = await pool.query(
+    `
+    SELECT
+      u.id,
+      u.nombre,
+      u.rol_id,
+      r.nombre AS rol,
+      u.local_id,
+      u.activo,
+      u.email,
+      u.password_hash,
+      u.dni,
+      u.pin_hash
+    FROM usuarios u
+    INNER JOIN roles r ON u.rol_id = r.id
+    WHERE u.email = ? OR u.dni = ?
+    LIMIT 1
+    `,
+    [credencial, credencial]
+  );
+
+  return rows[0];
+}
+
 // Obtener todos los usuarios
 async function obtenerUsuarios() {
   const [rows] = await pool.query(`
@@ -51,8 +77,7 @@ async function obtenerUsuarioPorId(id) {
   return rows[0];
 }
 
-// Obtener datos internos de seguridad de un usuario
-// NO se devuelve directamente al cliente
+// Obtener datos internos de seguridad de un usuario (no se devuelve al cliente)
 async function obtenerCredencialesUsuario(id) {
   const [rows] = await pool.query(
     `
@@ -151,6 +176,7 @@ async function desactivarUsuario(id) {
 }
 
 module.exports = {
+  obtenerUsuarioPorCredencial,
   obtenerUsuarios,
   obtenerUsuarioPorId,
   obtenerCredencialesUsuario,

@@ -1,19 +1,40 @@
-import React, { useEffect, useRef, useState } from 'react'
-import './Empleado.css'
-import { FaCamera, FaQrcode, FaCheckCircle, FaBan, FaSpinner } from 'react-icons/fa'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import '../css/Empleado.css'
+import {
+  FaCamera,
+  FaCheckCircle,
+  FaBan,
+  FaSpinner,
+  FaSyncAlt,
+  FaHome,
+  FaCalendarCheck,
+  FaMoneyBillWave,
+  FaUserCircle,
+  FaSignOutAlt,
+} from 'react-icons/fa'
 
 function Empleado() {
+  const navigate = useNavigate()
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const [devices, setDevices] = useState([])
   const [selectedDeviceId, setSelectedDeviceId] = useState(null)
-  const [mode, setMode] = useState('idle') // 'idle' | 'qr' | 'selfie'
-  const [qrResult, setQrResult] = useState(null)
   const [selfieData, setSelfieData] = useState(null)
+  const [attendanceStatus, setAttendanceStatus] = useState('idle')
+  const [attendanceMessage, setAttendanceMessage] = useState('')
+  const [activeSection, setActiveSection] = useState('Inicio')
   const [cameraPermission, setCameraPermission] = useState('unknown') // 'unknown'|'granted'|'denied'|'prompt'
   const [isStarting, setIsStarting] = useState(false)
-  const rafRef = useRef(null)
   const streamRef = useRef(null)
+  const user = JSON.parse(localStorage.getItem('authUser') || '{}')
+
+  const navigationItems = [
+    { label: 'Inicio', icon: FaHome },
+    { label: 'Asistencias', icon: FaCalendarCheck },
+    { label: 'Sueldo', icon: FaMoneyBillWave },
+    { label: 'Perfil', icon: FaUserCircle },
+  ]
 
   useEffect(() => {
     async function getDevices() {
@@ -53,17 +74,13 @@ function Empleado() {
       streamRef.current.getTracks().forEach((t) => t.stop())
       streamRef.current = null
     }
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current)
-      rafRef.current = null
-    }
   }
 
   const startStream = async (deviceId) => {
     stopStream()
     setIsStarting(true)
     try {
-      const constraints = { video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' } }
+      const constraints = { video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' } }
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       streamRef.current = stream
       setCameraPermission('granted')
@@ -88,57 +105,64 @@ function Empleado() {
     await startStream(id)
   }
 
-  const startQR = async () => {
-    setQrResult(null)
-    setMode('qr')
-    // try to start stream (will request permission if needed)
-    await startStream(selectedDeviceId)
-    scanLoop()
-  }
-
-  const scanLoop = async () => {
-    if (!videoRef.current || videoRef.current.readyState < 2) {
-      rafRef.current = requestAnimationFrame(scanLoop)
-      return
-    }
-
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    // Prefer BarcodeDetector API if available
-    if ('BarcodeDetector' in window) {
-      try {
-        const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
-        const barcodes = await detector.detect(canvas)
-        if (barcodes && barcodes.length) {
-          setQrResult(barcodes[0].rawValue)
-          setMode('idle')
-          stopStream()
-          return
-        }
-      } catch (e) {
-        console.warn('BarcodeDetector error', e)
-      }
-    } else {
-      // Fallback: show message (robust QR decoding needs external lib like jsQR)
-    }
-
-    rafRef.current = requestAnimationFrame(scanLoop)
-  }
-
-  const stopQR = () => {
-    setMode('idle')
+  const stopCamera = () => {
     stopStream()
   }
 
+  const logout = () => {
+    stopStream()
+    localStorage.removeItem('authToken')
+    localStorage.removeItem('authUser')
+    navigate('/login')
+  }
+
+  const getLocation = () => new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Tu navegador no permite obtener la ubicación'))
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve(position.coords),
+      () => reject(new Error('Necesitamos permiso para obtener tu ubicación')),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    )
+  })
+
+  const saveAttendance = async (photo) => {
+    const token = localStorage.getItem('authToken')
+    if (!token) throw new Error('Tu sesión expiró. Vuelve a iniciar sesión')
+
+    const coords = await getLocation()
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/fichajes`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        foto: photo,
+        latitud: coords.latitude,
+        longitud: coords.longitude,
+      }),
+    })
+    const result = await response.json()
+
+    if (!response.ok || !result.ok) {
+      throw new Error(result.message || 'No se pudo registrar la asistencia')
+    }
+
+    return result
+  }
+
   const captureSelfie = async () => {
-    setMode('selfie')
+    setAttendanceStatus('capturing')
+    setAttendanceMessage('')
     await startStream(selectedDeviceId)
-    if (!videoRef.current) return
+    if (!videoRef.current || !streamRef.current) {
+      setAttendanceStatus('idle')
+      return
+    }
     const video = videoRef.current
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
@@ -148,86 +172,78 @@ function Empleado() {
     const data = canvas.toDataURL('image/png')
     setSelfieData(data)
     stopStream()
-  }
 
-  const downloadSelfie = () => {
-    if (!selfieData) return
-    const a = document.createElement('a')
-    a.href = selfieData
-    a.download = `selfie_${Date.now()}.png`
-    a.click()
+    try {
+      setAttendanceStatus('saving')
+      const result = await saveAttendance(data)
+      setAttendanceStatus('saved')
+      setAttendanceMessage(`${result.message}. Registro guardado con ubicación y hora.`)
+    } catch (error) {
+      setAttendanceStatus('error')
+      setAttendanceMessage(error.message || 'No se pudo registrar la asistencia')
+    }
   }
 
   return (
     <div className="empleado-page">
-      <div className="empleado-container">
-        <div className="empleado-header">
-          <div>
-            <h1>Pantalla Empleado</h1>
-            <div className="empleado-sub">Marca tu asistencia: escanea QR o toma una selfie.</div>
+      <div className="empleado-shell">
+        <aside className="empleado-sidebar">
+          <div className="empleado-brand">
+            <span className="empleado-brand-mark">IC</span>
+            <div><strong>Ingenio</strong><span>Portal empleado</span></div>
           </div>
-
-          <div className="permission-status">
-            {isStarting ? (
-              <div className="perm-item"><FaSpinner className="spin"/> Solicitando cámara...</div>
-            ) : cameraPermission === 'granted' ? (
-              <div className="perm-item"><FaCheckCircle/> Cámara autorizada</div>
-            ) : cameraPermission === 'denied' ? (
-              <div className="perm-item"><FaBan/> Cámara denegada</div>
-            ) : (
-              <div className="perm-item">Estado de cámara: {cameraPermission}</div>
-            )}
+          <div className="empleado-user-mini">
+            <div className="empleado-avatar">{(user.nombre || 'E').charAt(0).toUpperCase()}</div>
+            <div><strong>{user.nombre || 'Empleado'}</strong><span>Jornada activa</span></div>
           </div>
-        </div>
-
-        <div className="controls">
-          <label>Seleccionar cámara:</label>
-          <select value={selectedDeviceId || ''} onChange={handleDeviceChange}>
-            {devices.map((d) => (
-              <option value={d.deviceId} key={d.deviceId}>
-                {d.label || `Cámara ${d.deviceId}`}
-              </option>
+          <nav className="empleado-nav" aria-label="Navegación del empleado">
+            {navigationItems.map(({ label, icon: Icon }) => (
+              <button key={label} type="button" className={`empleado-nav-item ${activeSection === label ? 'active' : ''}`} onClick={() => setActiveSection(label)}>
+                <Icon /><span>{label}</span>
+              </button>
             ))}
-          </select>
+          </nav>
+          <button type="button" className="empleado-logout" onClick={logout}><FaSignOutAlt /><span>Cerrar sesión</span></button>
+        </aside>
 
-          <div className="buttons">
-            <button onClick={startQR} className="btn"><FaQrcode style={{marginRight:8}}/>Escanear QR</button>
-            <button onClick={stopQR} className="btn btn-secondary"><FaBan style={{marginRight:8}}/>Detener</button>
-            <button onClick={captureSelfie} className="btn"><FaCamera style={{marginRight:8}}/>Tomar selfie</button>
-            <button onClick={downloadSelfie} className="btn" disabled={!selfieData}>Descargar selfie</button>
-          </div>
-        </div>
-
-        <div className="camera-area">
-          <div className="camera-card camera-overlay">
-            <video ref={videoRef} className="camera-video" playsInline muted />
-            <div className="qr-frame" aria-hidden />
-            <canvas ref={canvasRef} className="camera-canvas" style={{ display: 'none' }} />
-          </div>
-
-          <div className="sidebar-card">
-            <h3>Resultados</h3>
-            <div className="results">
-              <div className="qr-result" style={{flex:1}}>
-                <h4>Resultado QR</h4>
-                {qrResult ? <pre className="qr-value">{qrResult}</pre> : <p className="empleado-sub">No detectado aún.</p>}
+        <main className="empleado-container">
+          {activeSection === 'Inicio' && (
+            <>
+              <div className="empleado-header">
+                <div><p className="empleado-kicker">Control de asistencia</p><h1>Marca tu entrada con una selfie</h1><div className="empleado-sub">Colócate frente a la cámara y toma una foto para registrar tu asistencia.</div></div>
+                <div className="permission-status">
+                  {isStarting ? <div className="perm-item"><FaSpinner className="spin" /> Solicitando cámara...</div> : cameraPermission === 'granted' ? <div className="perm-item"><FaCheckCircle /> Cámara autorizada</div> : cameraPermission === 'denied' ? <div className="perm-item"><FaBan /> Cámara denegada</div> : <div className="perm-item">Estado de cámara: {cameraPermission}</div>}
+                </div>
               </div>
-
-              <div className="selfie-result" style={{width:120}}>
-                <h4>Selfie</h4>
-                {selfieData ? (
-                  <img src={selfieData} alt="Selfie" className="selfie-preview" />
-                ) : (
-                  <p className="empleado-sub">No hay selfie capturada.</p>
-                )}
+              <div className="camera-area">
+                <div className="camera-card">
+                  <div className="camera-heading"><div><span className="camera-label">Cámara frontal</span><h2>{attendanceStatus === 'saved' ? 'Asistencia registrada' : 'Prepara tu selfie'}</h2></div><FaCamera /></div>
+                  <div className="camera-frame">
+                    <video ref={videoRef} className="camera-video" playsInline muted />
+                    {!isStarting && !streamRef.current && !selfieData && <div className="camera-placeholder">Pulsa el botón para activar la cámara</div>}
+                    {selfieData && <img src={selfieData} alt="Selfie capturada" className="captured-selfie" />}
+                  </div>
+                  <canvas ref={canvasRef} className="camera-canvas" style={{ display: 'none' }} />
+                  <div className="camera-actions">
+                    <select aria-label="Seleccionar cámara" value={selectedDeviceId || ''} onChange={handleDeviceChange}>{devices.map((d) => <option value={d.deviceId} key={d.deviceId}>{d.label || `Cámara ${d.deviceId}`}</option>)}</select>
+                    <button onClick={captureSelfie} className="btn" disabled={isStarting || attendanceStatus === 'capturing' || attendanceStatus === 'saving'}>{isStarting ? <FaSpinner className="spin" /> : <FaCamera />}{isStarting ? 'Abriendo cámara...' : attendanceStatus === 'saving' ? 'Guardando asistencia...' : 'Tomar selfie y marcar asistencia'}</button>
+                    {streamRef.current && <button onClick={stopCamera} className="btn btn-secondary"><FaBan />Detener cámara</button>}
+                  </div>
+                </div>
+                <div className="sidebar-card">
+                  <div className="status-icon"><FaCheckCircle /></div><span className="camera-label">Estado de registro</span><h3>{attendanceStatus === 'saved' ? 'Asistencia registrada' : attendanceStatus === 'error' ? 'No se pudo registrar' : 'Aún no registrada'}</h3>
+                  <p className="empleado-sub">{attendanceMessage || 'Necesitamos una selfie clara, con tu rostro visible y buena iluminación.'}</p>
+                  {(attendanceStatus === 'saved' || attendanceStatus === 'error') && <button type="button" className="retake-button" onClick={() => { setSelfieData(null); setAttendanceStatus('idle'); setAttendanceMessage('') }}><FaSyncAlt /> Tomar otra selfie</button>}
+                  <div className="capture-notes"><span><FaCheckCircle /> Rostro visible</span><span><FaCheckCircle /> Buena iluminación</span><span><FaCheckCircle /> Cámara autorizada</span></div>
+                </div>
               </div>
-            </div>
+            </>
+          )}
 
-            <div className="help">
-              <p className="empleado-sub">Si la cámara no funciona, revisa permisos del navegador y recarga la página.</p>
-            </div>
-          </div>
-        </div>
+          {activeSection === 'Asistencias' && <section className="empleado-section-view"><p className="empleado-kicker">Historial</p><h1>Mis asistencias</h1><p className="empleado-sub">Consulta el estado de tus registros de entrada y salida.</p><div className="summary-grid"><article className="summary-card"><span>Estado de hoy</span><strong>{attendanceStatus === 'saved' ? 'Registrada' : 'Pendiente'}</strong><small>{attendanceMessage || 'Aún no hay un fichaje en esta sesión.'}</small></article><article className="summary-card"><span>Último registro</span><strong>{attendanceStatus === 'saved' ? 'Guardado ahora' : 'Sin registros'}</strong><small>La hora y ubicación se guardan automáticamente.</small></article></div><button type="button" className="btn section-action" onClick={() => setActiveSection('Inicio')}><FaCamera /> Registrar asistencia</button></section>}
+          {activeSection === 'Sueldo' && <section className="empleado-section-view"><p className="empleado-kicker">Información laboral</p><h1>Mi sueldo</h1><p className="empleado-sub">Aquí podrás consultar tus pagos y recibos cuando estén disponibles.</p><div className="empty-state"><FaMoneyBillWave /><strong>Información pendiente</strong><span>Tu empresa todavía no ha cargado datos de sueldo.</span></div></section>}
+          {activeSection === 'Perfil' && <section className="empleado-section-view"><p className="empleado-kicker">Cuenta personal</p><h1>Mi perfil</h1><p className="empleado-sub">Datos asociados a tu cuenta de empleado.</p><div className="profile-card"><div className="profile-avatar">{(user.nombre || 'E').charAt(0).toUpperCase()}</div><div><span>Nombre completo</span><strong>{user.nombre || 'No disponible'}</strong></div><div><span>Rol</span><strong>{user.rol || 'Empleado'}</strong></div><div><span>ID de usuario</span><strong>{user.id || 'No disponible'}</strong></div></div></section>}
+        </main>
       </div>
     </div>
   )

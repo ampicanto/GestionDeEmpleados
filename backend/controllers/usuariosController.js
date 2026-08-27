@@ -1,5 +1,197 @@
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const usuariosModel = require("../models/usuariosModel");
+const { enviarBienvenidaEmpleado } = require("../services/emailService");
+
+// Iniciar sesión (para admin y empleados)
+async function iniciarSesion(req, res) {
+  try {
+    const { email, password, dni, pin } = req.body;
+
+    if ((!email || !password) && (!dni || !pin)) {
+      return res.status(400).json({
+        ok: false,
+        message: "Ingresa email y contraseña, o DNI y PIN"
+      });
+    }
+
+    const credencial = email || dni;
+    const usuario = await usuariosModel.obtenerUsuarioPorCredencial(credencial);
+
+    if (!usuario || !usuario.activo) {
+      return res.status(401).json({
+        ok: false,
+        message: "Credenciales inválidas"
+      });
+    }
+
+    const hash = email ? usuario.password_hash : usuario.pin_hash;
+    const valor = email ? password : pin;
+    const credencialValida = hash && (await bcrypt.compare(valor, hash));
+
+    if (!credencialValida) {
+      return res.status(401).json({
+        ok: false,
+        message: "Credenciales inválidas"
+      });
+    }
+
+    const token = jwt.sign(
+      { id: usuario.id, rol_id: usuario.rol_id, local_id: usuario.local_id },
+      process.env.JWT_SECRET || "cambia-esta-clave-en-produccion",
+      { expiresIn: "8h" }
+    );
+
+    return res.status(200).json({
+      ok: true,
+      message: "Inicio de sesión correcto",
+      token,
+      data: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        rol_id: usuario.rol_id,
+        rol: usuario.rol,
+        local_id: usuario.local_id
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      ok: false,
+      message: "Error al iniciar sesión"
+    });
+  }
+}
+
+// Registrar nuevo administrador
+async function registrarAdministrador(req, res) {
+  try {
+    const { nombre, email, password } = req.body;
+
+    if (!nombre || !email || !password) {
+      return res.status(400).json({
+        ok: false,
+        message: "Nombre, email y contraseña son obligatorios"
+      });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        ok: false,
+        message: "La contraseña debe tener al menos 8 caracteres"
+      });
+    }
+
+    const resultado = await usuariosModel.crearUsuario({
+      rol_id: 2,
+      puesto_id: null,
+      nombre: nombre.trim(),
+      email: email.trim().toLowerCase(),
+      password_hash: await bcrypt.hash(password, 10),
+      dni: null,
+      pin_hash: null,
+      local_id: null,
+      activo: true
+    });
+
+    return res.status(201).json({
+      ok: true,
+      message: "Cuenta creada correctamente",
+      id: resultado.insertId
+    });
+  } catch (error) {
+    console.error(error);
+
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({
+        ok: false,
+        message: "El email ya está registrado"
+      });
+    }
+
+    return res.status(500).json({
+      ok: false,
+      message: "Error al crear la cuenta"
+    });
+  }
+}
+
+// Registrar empleado
+async function registrarEmpleado(req, res) {
+  try {
+    const { nombre, email, dni, pin } = req.body;
+
+    if (!nombre || !email || !dni || !pin) {
+      return res.status(400).json({
+        ok: false,
+        message: "Nombre, email, DNI y PIN son obligatorios"
+      });
+    }
+
+    if (typeof dni !== "string" || !/^\d{4,20}$/.test(dni.trim())) {
+      return res.status(400).json({
+        ok: false,
+        message: "El DNI debe contener entre 4 y 20 números"
+      });
+    }
+
+    if (pin.length < 4 || pin.length > 8 || !/^\d+$/.test(pin)) {
+      return res.status(400).json({
+        ok: false,
+        message: "El PIN debe tener entre 4 y 8 números"
+      });
+    }
+
+    const nombreNormalizado = nombre.trim();
+    const emailNormalizado = email.trim().toLowerCase();
+    const dniNormalizado = dni.trim();
+    const resultado = await usuariosModel.crearUsuario({
+      rol_id: 3,
+      puesto_id: null,
+      nombre: nombreNormalizado,
+      email: emailNormalizado,
+      password_hash: null,
+      dni: dniNormalizado,
+      pin_hash: await bcrypt.hash(pin, 10),
+      local_id: null,
+      activo: true
+    });
+
+    let correoEnviado = false;
+    try {
+      correoEnviado = await enviarBienvenidaEmpleado({
+        email: emailNormalizado,
+        nombre: nombreNormalizado,
+        dni: dniNormalizado
+      });
+    } catch (emailError) {
+      console.error("No se pudo enviar el correo de bienvenida:", emailError.message);
+    }
+
+    return res.status(201).json({
+      ok: true,
+      message: correoEnviado
+        ? "Empleado registrado y correo enviado"
+        : "Empleado registrado. El correo queda pendiente de configuración SMTP",
+      id: resultado.insertId,
+      correoEnviado
+    });
+  } catch (error) {
+    console.error(error);
+
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({
+        ok: false,
+        message: "El email o DNI ya está registrado"
+      });
+    }
+
+    return res.status(500).json({
+      ok: false,
+      message: "Error al registrar el empleado"
+    });
+  }
+}
 
 // Obtener todos los usuarios
 async function listarUsuarios(req, res) {
@@ -10,13 +202,31 @@ async function listarUsuarios(req, res) {
       ok: true,
       data: usuarios,
     });
-
   } catch (error) {
     console.error(error);
 
     res.status(500).json({
       ok: false,
       message: "Error al obtener los usuarios",
+    });
+  }
+}
+
+// Listar únicamente empleados activos
+async function listarEmpleados(req, res) {
+  try {
+    const usuarios = await usuariosModel.obtenerUsuarios();
+    const empleados = usuarios.filter((usuario) => Number(usuario.rol_id) === 3 && usuario.activo);
+
+    res.status(200).json({
+      ok: true,
+      data: empleados,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener los empleados",
     });
   }
 }
@@ -39,7 +249,6 @@ async function obtenerUsuario(req, res) {
       ok: true,
       data: usuario,
     });
-
   } catch (error) {
     console.error(error);
 
@@ -64,7 +273,6 @@ async function crearUsuario(req, res) {
       local_id
     } = req.body;
 
-    // Validaciones básicas
     if (!rol_id || !nombre) {
       return res.status(400).json({
         ok: false,
@@ -72,13 +280,26 @@ async function crearUsuario(req, res) {
       });
     }
 
-    // Roles válidos según la tabla roles
     const rolesValidos = [1, 2, 3];
 
     if (!rolesValidos.includes(Number(rol_id))) {
       return res.status(400).json({
         ok: false,
         message: "Rol no válido"
+      });
+    }
+
+    if (Number(rol_id) === 2 && !local_id) {
+      return res.status(400).json({
+        ok: false,
+        message: "Un administrador debe pertenecer a un local"
+      });
+    }
+
+    if (Number(rol_id) === 3 && (!local_id || !puesto_id)) {
+      return res.status(400).json({
+        ok: false,
+        message: "Un empleado necesita local y puesto"
       });
     }
 
@@ -94,9 +315,7 @@ async function crearUsuario(req, res) {
       activo: true
     };
 
-    // Super Admin o Administrador
     if (Number(rol_id) === 1 || Number(rol_id) === 2) {
-
       if (!email || !password) {
         return res.status(400).json({
           ok: false,
@@ -108,9 +327,7 @@ async function crearUsuario(req, res) {
       datos.password_hash = await bcrypt.hash(password, 10);
     }
 
-    // Empleado
     if (Number(rol_id) === 3) {
-
       if (!dni || !pin) {
         return res.status(400).json({
           ok: false,
@@ -129,7 +346,6 @@ async function crearUsuario(req, res) {
       message: "Usuario creado correctamente",
       id: resultado.insertId
     });
-
   } catch (error) {
     console.error(error);
 
@@ -164,7 +380,6 @@ async function actualizarUsuario(req, res) {
       activo
     } = req.body;
 
-    // Verificar que el usuario exista
     const usuario = await usuariosModel.obtenerUsuarioPorId(id);
 
     if (!usuario) {
@@ -174,10 +389,8 @@ async function actualizarUsuario(req, res) {
       });
     }
 
-    // Obtener credenciales actuales
     const credenciales = await usuariosModel.obtenerCredencialesUsuario(id);
 
-    // Validaciones básicas
     if (!rol_id || !nombre) {
       return res.status(400).json({
         ok: false,
@@ -185,13 +398,26 @@ async function actualizarUsuario(req, res) {
       });
     }
 
-    // Roles válidos según la nueva BD
     const rolesValidos = [1, 2, 3];
 
     if (!rolesValidos.includes(Number(rol_id))) {
       return res.status(400).json({
         ok: false,
         message: "Rol no válido"
+      });
+    }
+
+    if (Number(rol_id) === 2 && !local_id) {
+      return res.status(400).json({
+        ok: false,
+        message: "Un administrador debe pertenecer a un local"
+      });
+    }
+
+    if (Number(rol_id) === 3 && (!local_id || !puesto_id)) {
+      return res.status(400).json({
+        ok: false,
+        message: "Un empleado necesita local y puesto"
       });
     }
 
@@ -207,9 +433,7 @@ async function actualizarUsuario(req, res) {
       activo: activo !== undefined ? activo : true
     };
 
-    // Super Admin o Administrador
     if (Number(rol_id) === 1 || Number(rol_id) === 2) {
-
       if (!email) {
         return res.status(400).json({
           ok: false,
@@ -219,19 +443,15 @@ async function actualizarUsuario(req, res) {
 
       datos.email = email;
 
-      // Cambiar contraseña solamente si se envió una nueva
       if (password) {
         datos.password_hash = await bcrypt.hash(password, 10);
       }
 
-      // Estos campos no corresponden a admin
       datos.dni = null;
       datos.pin_hash = null;
     }
 
-    // Empleado
     if (Number(rol_id) === 3) {
-
       if (!dni) {
         return res.status(400).json({
           ok: false,
@@ -241,12 +461,10 @@ async function actualizarUsuario(req, res) {
 
       datos.dni = dni;
 
-      // Cambiar PIN solamente si se envió uno nuevo
       if (pin) {
         datos.pin_hash = await bcrypt.hash(pin, 10);
       }
 
-      // Estos campos no corresponden a empleado
       datos.email = null;
       datos.password_hash = null;
     }
@@ -258,7 +476,6 @@ async function actualizarUsuario(req, res) {
       message: "Usuario actualizado correctamente",
       affectedRows: resultado.affectedRows
     });
-
   } catch (error) {
     console.error(error);
 
@@ -281,7 +498,6 @@ async function desactivarUsuario(req, res) {
   try {
     const { id } = req.params;
 
-    // Verificar que el usuario exista
     const usuario = await usuariosModel.obtenerUsuarioPorId(id);
 
     if (!usuario) {
@@ -291,7 +507,6 @@ async function desactivarUsuario(req, res) {
       });
     }
 
-    // Verificar si ya está desactivado
     if (!usuario.activo) {
       return res.status(400).json({
         ok: false,
@@ -306,9 +521,7 @@ async function desactivarUsuario(req, res) {
       message: "Usuario desactivado correctamente",
       affectedRows: resultado.affectedRows
     });
-
   } catch (error) {
-
     console.error(error);
 
     res.status(500).json({
@@ -318,14 +531,14 @@ async function desactivarUsuario(req, res) {
   }
 }
 
-
-
-
 module.exports = {
+  iniciarSesion,
+  registrarAdministrador,
+  registrarEmpleado,
   listarUsuarios,
+  listarEmpleados,
   obtenerUsuario,
   crearUsuario,
   actualizarUsuario,
-  desactivarUsuario,
-
+  desactivarUsuario
 };
