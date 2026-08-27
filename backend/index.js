@@ -4,6 +4,11 @@ const express = require('express')
 const cors = require('cors')
 const { testConnection } = require('./config/db')
 
+// Routers
+const usuariosRoutes = require("./routes/usuariosRoutes")
+const fichajesRoutes = require('./routes/fichajesRoutes')
+const projectsRouter = require('./controllers/projects')
+
 const app = express()
 const PORT = process.env.PORT || 3000
 
@@ -11,8 +16,13 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
   credentials: true,
 }))
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
+
+// Rutas API
+app.use("/api/usuarios", usuariosRoutes)
+app.use("/api/fichajes", fichajesRoutes)
+app.use("/api/projects", projectsRouter)
 
 app.get('/', (req, res) => {
   res.json({
