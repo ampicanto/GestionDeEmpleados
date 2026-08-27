@@ -23,9 +23,11 @@ function Empleado() {
   const [selfieData, setSelfieData] = useState(null)
   const [attendanceStatus, setAttendanceStatus] = useState('idle')
   const [attendanceMessage, setAttendanceMessage] = useState('')
+  const [registeredAt, setRegisteredAt] = useState(null)
   const [activeSection, setActiveSection] = useState('Inicio')
   const [cameraPermission, setCameraPermission] = useState('unknown') // 'unknown'|'granted'|'denied'|'prompt'
   const [isStarting, setIsStarting] = useState(false)
+  const [isCameraActive, setIsCameraActive] = useState(false)
   const streamRef = useRef(null)
   const user = JSON.parse(localStorage.getItem('authUser') || '{}')
 
@@ -78,11 +80,13 @@ function Empleado() {
 
   const startStream = async (deviceId) => {
     stopStream()
+    setIsCameraActive(false)
     setIsStarting(true)
     try {
       const constraints = { video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' } }
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       streamRef.current = stream
+      setIsCameraActive(true)
       setCameraPermission('granted')
       setIsStarting(false)
       if (videoRef.current) {
@@ -107,6 +111,7 @@ function Empleado() {
 
   const stopCamera = () => {
     stopStream()
+    setIsCameraActive(false)
   }
 
   const logout = () => {
@@ -156,6 +161,8 @@ function Empleado() {
   }
 
   const captureSelfie = async () => {
+    if (!streamRef.current) return
+
     setAttendanceStatus('capturing')
     setAttendanceMessage('')
     await startStream(selectedDeviceId)
@@ -172,11 +179,13 @@ function Empleado() {
     const data = canvas.toDataURL('image/png')
     setSelfieData(data)
     stopStream()
+    setIsCameraActive(false)
 
     try {
       setAttendanceStatus('saving')
       const result = await saveAttendance(data)
       setAttendanceStatus('saved')
+      setRegisteredAt(new Date())
       setAttendanceMessage(`${result.message}. Registro guardado con ubicación y hora.`)
     } catch (error) {
       setAttendanceStatus('error')
@@ -216,23 +225,25 @@ function Empleado() {
                 </div>
               </div>
               <div className="camera-area">
-                <div className="camera-card">
+                <div className={`camera-card ${attendanceStatus === 'capturing' || attendanceStatus === 'saving' ? 'is-processing' : ''}`}>
                   <div className="camera-heading"><div><span className="camera-label">Cámara frontal</span><h2>{attendanceStatus === 'saved' ? 'Asistencia registrada' : 'Prepara tu selfie'}</h2></div><FaCamera /></div>
                   <div className="camera-frame">
                     <video ref={videoRef} className="camera-video" playsInline muted />
-                    {!isStarting && !streamRef.current && !selfieData && <div className="camera-placeholder">Pulsa el botón para activar la cámara</div>}
+                    {!selfieData && <span className="camera-guide" aria-hidden="true" />}
+                    {!isStarting && !isCameraActive && !selfieData && <div className="camera-placeholder">Activa la cámara para comenzar</div>}
                     {selfieData && <img src={selfieData} alt="Selfie capturada" className="captured-selfie" />}
                   </div>
                   <canvas ref={canvasRef} className="camera-canvas" style={{ display: 'none' }} />
                   <div className="camera-actions">
                     <select aria-label="Seleccionar cámara" value={selectedDeviceId || ''} onChange={handleDeviceChange}>{devices.map((d) => <option value={d.deviceId} key={d.deviceId}>{d.label || `Cámara ${d.deviceId}`}</option>)}</select>
-                    <button onClick={captureSelfie} className="btn" disabled={isStarting || attendanceStatus === 'capturing' || attendanceStatus === 'saving'}>{isStarting ? <FaSpinner className="spin" /> : <FaCamera />}{isStarting ? 'Abriendo cámara...' : attendanceStatus === 'saving' ? 'Guardando asistencia...' : 'Tomar selfie y marcar asistencia'}</button>
-                    {streamRef.current && <button onClick={stopCamera} className="btn btn-secondary"><FaBan />Detener cámara</button>}
+                    <button onClick={isCameraActive ? captureSelfie : () => startStream(selectedDeviceId)} className={`btn camera-capture-button ${attendanceStatus === 'capturing' || attendanceStatus === 'saving' ? 'is-processing' : ''}`} disabled={isStarting || attendanceStatus === 'capturing' || attendanceStatus === 'saving'}>{isStarting ? <FaSpinner className="spin" /> : <FaCamera />}{isStarting ? 'Abriendo cámara...' : attendanceStatus === 'saving' ? 'Guardando asistencia...' : isCameraActive ? 'Tomar selfie y marcar asistencia' : 'Activar cámara'}</button>
+                    {isCameraActive && <button onClick={stopCamera} className="btn btn-secondary"><FaBan />Detener cámara</button>}
                   </div>
                 </div>
-                <div className="sidebar-card">
-                  <div className="status-icon"><FaCheckCircle /></div><span className="camera-label">Estado de registro</span><h3>{attendanceStatus === 'saved' ? 'Asistencia registrada' : attendanceStatus === 'error' ? 'No se pudo registrar' : 'Aún no registrada'}</h3>
+                  <div className="sidebar-card">
+                  <div className={`status-icon status-${attendanceStatus}`}><FaCheckCircle /></div><span className="camera-label">Estado de registro</span><h3>{attendanceStatus === 'saved' ? 'Asistencia registrada' : attendanceStatus === 'error' ? 'No se pudo registrar' : attendanceStatus === 'saving' ? 'Guardando registro' : 'Aún no registrada'}</h3>
                   <p className="empleado-sub">{attendanceMessage || 'Necesitamos una selfie clara, con tu rostro visible y buena iluminación.'}</p>
+                  {registeredAt && <time className="registered-time" dateTime={registeredAt.toISOString()}>Registrada hoy a las {registeredAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>}
                   {(attendanceStatus === 'saved' || attendanceStatus === 'error') && <button type="button" className="retake-button" onClick={() => { setSelfieData(null); setAttendanceStatus('idle'); setAttendanceMessage('') }}><FaSyncAlt /> Tomar otra selfie</button>}
                   <div className="capture-notes"><span><FaCheckCircle /> Rostro visible</span><span><FaCheckCircle /> Buena iluminación</span><span><FaCheckCircle /> Cámara autorizada</span></div>
                 </div>
@@ -240,7 +251,7 @@ function Empleado() {
             </>
           )}
 
-          {activeSection === 'Asistencias' && <section className="empleado-section-view"><p className="empleado-kicker">Historial</p><h1>Mis asistencias</h1><p className="empleado-sub">Consulta el estado de tus registros de entrada y salida.</p><div className="summary-grid"><article className="summary-card"><span>Estado de hoy</span><strong>{attendanceStatus === 'saved' ? 'Registrada' : 'Pendiente'}</strong><small>{attendanceMessage || 'Aún no hay un fichaje en esta sesión.'}</small></article><article className="summary-card"><span>Último registro</span><strong>{attendanceStatus === 'saved' ? 'Guardado ahora' : 'Sin registros'}</strong><small>La hora y ubicación se guardan automáticamente.</small></article></div><button type="button" className="btn section-action" onClick={() => setActiveSection('Inicio')}><FaCamera /> Registrar asistencia</button></section>}
+                  {activeSection === 'Asistencias' && <section className="empleado-section-view"><p className="empleado-kicker">Historial</p><h1>Mis asistencias</h1><p className="empleado-sub">Consulta el estado de tus registros de entrada y salida.</p><div className="summary-grid"><article className="summary-card"><span>Estado de hoy</span><strong>{attendanceStatus === 'saved' ? 'Registrada' : 'Pendiente'}</strong><small>{attendanceMessage || 'Aún no hay un fichaje en esta sesión.'}</small></article><article className="summary-card"><span>Último registro</span><strong>{attendanceStatus === 'saved' ? 'Guardado ahora' : 'Sin registros'}</strong><small>{registeredAt ? `Registrado a las ${registeredAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` : 'La hora y ubicación se guardan automáticamente.'}</small></article></div><button type="button" className="btn section-action" onClick={() => setActiveSection('Inicio')}><FaCamera /> Registrar asistencia</button></section>}
           {activeSection === 'Sueldo' && <section className="empleado-section-view"><p className="empleado-kicker">Información laboral</p><h1>Mi sueldo</h1><p className="empleado-sub">Aquí podrás consultar tus pagos y recibos cuando estén disponibles.</p><div className="empty-state"><FaMoneyBillWave /><strong>Información pendiente</strong><span>Tu empresa todavía no ha cargado datos de sueldo.</span></div></section>}
           {activeSection === 'Perfil' && <section className="empleado-section-view"><p className="empleado-kicker">Cuenta personal</p><h1>Mi perfil</h1><p className="empleado-sub">Datos asociados a tu cuenta de empleado.</p><div className="profile-card"><div className="profile-avatar">{(user.nombre || 'E').charAt(0).toUpperCase()}</div><div><span>Nombre completo</span><strong>{user.nombre || 'No disponible'}</strong></div><div><span>Rol</span><strong>{user.rol || 'Empleado'}</strong></div><div><span>ID de usuario</span><strong>{user.id || 'No disponible'}</strong></div></div></section>}
         </main>

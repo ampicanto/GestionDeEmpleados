@@ -158,7 +158,7 @@
 
 .camera-frame {
   position: relative;
-  min-height: 430px;
+  min-height: 360px;
   overflow: hidden;
   border-radius: 18px;
   background: #173640;
@@ -168,7 +168,7 @@
 .captured-selfie {
   display: block;
   width: 100%;
-  height: 430px;
+  height: 360px;
   object-fit: cover;
 }
 
@@ -182,6 +182,18 @@
   padding: 30px;
   color: rgba(255, 255, 255, 0.78);
   text-align: center;
+}
+
+.camera-guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(62%, 250px);
+  aspect-ratio: 0.78;
+  border: 2px solid rgba(217, 241, 231, 0.55);
+  border-radius: 48% 48% 44% 44%;
+  transform: translate(-50%, -53%);
+  pointer-events: none;
 }
 
 .camera-actions {
@@ -224,6 +236,20 @@
 .empleado-page .btn:disabled { cursor: not-allowed; opacity: 0.65; }
 .empleado-page .btn-secondary { color: var(--ink); background: #e7f0f1; box-shadow: none; }
 
+.camera-capture-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.camera-capture-button.is-processing {
+  animation: capture-pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes capture-pulse {
+  from { transform: scale(1); box-shadow: 0 10px 20px rgba(74, 163, 175, 0.2); }
+  to { transform: scale(1.035); box-shadow: 0 15px 28px rgba(74, 163, 175, 0.34); }
+}
+
 .sidebar-card {
   display: flex;
   flex-direction: column;
@@ -242,6 +268,16 @@
   color: #268d78;
   background: #dff4e9;
   font-size: 1.5rem;
+}
+
+.status-icon.status-saving { color: #247f98; background: #dff4f1; }
+.status-icon.status-error { color: #a84e43; background: #fff0ed; }
+
+.registered-time {
+  margin-top: 14px;
+  color: #268d78;
+  font-size: 0.84rem;
+  font-weight: 750;
 }
 
 .sidebar-card h3 { margin-bottom: 10px; font-size: 1.6rem; }
@@ -283,8 +319,9 @@
   .empleado-sidebar { position: static; margin-bottom: 18px; padding: 14px; border-radius: 18px; }
   .empleado-brand { padding: 2px 6px 14px; }
   .empleado-user-mini { display: none; }
-  .empleado-nav { display: flex; gap: 6px; overflow-x: auto; }
-  .empleado-nav-item { justify-content: center; flex: 1 0 auto; width: auto; white-space: nowrap; }
+  .empleado-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .empleado-nav-item { flex-direction: column; justify-content: center; gap: 4px; width: 100%; padding: 9px 3px; font-size: 0.68rem; text-align: center; }
+  .empleado-nav-item svg { width: 15px; height: 15px; }
   .empleado-logout { display: flex; justify-content: center; width: auto; margin-top: 8px; }
   .empleado-container { padding: 4px 0; }
   .empleado-header { flex-direction: column; }
@@ -294,11 +331,29 @@
 }
 
 @media (max-width: 520px) {
-  .empleado-header h1 { font-size: 2.35rem; }
-  .permission-status { align-self: flex-start; }
+  .empleado-page { padding: 16px 12px 28px; }
+  .empleado-header { gap: 14px; margin-bottom: 18px; }
+  .empleado-header h1 { max-width: 360px; margin-bottom: 8px; font-size: 2.05rem; }
+  .empleado-sub { font-size: 0.9rem; line-height: 1.5; }
+  .permission-status { align-self: flex-start; padding: 9px 12px; font-size: 0.78rem; }
+  .camera-area { gap: 14px; }
   .camera-card, .sidebar-card { padding: 14px; border-radius: 18px; }
-  .camera-frame, .camera-video, .captured-selfie { min-height: 320px; height: 320px; }
-  .camera-actions, .camera-actions select, .camera-actions .btn { width: 100%; }
+  .camera-heading { align-items: center; margin: 0 2px 13px; }
+  .camera-label { margin-bottom: 6px; font-size: 0.67rem; }
+  .camera-heading h2 { font-size: 1.18rem; }
+  .camera-heading > svg { width: 38px; height: 38px; padding: 10px; border-radius: 12px; }
+  .camera-frame { min-height: 0; height: 270px; aspect-ratio: auto; border-radius: 15px; }
+  .camera-video, .captured-selfie { height: 100%; min-height: 0; }
+  .camera-placeholder { padding: 24px; font-size: 0.9rem; }
+  .camera-guide { width: min(64%, 210px); }
+  .camera-actions { gap: 8px; margin-top: 12px; }
+  .camera-actions select, .camera-actions .btn { width: 100%; min-width: 0; }
+  .camera-actions select { min-height: 44px; padding: 10px 12px; }
+  .empleado-page .btn { min-height: 48px; padding: 11px 13px; font-size: 0.88rem; }
+  .sidebar-card { padding: 20px; }
+  .status-icon { width: 44px; height: 44px; margin-bottom: 18px; font-size: 1.2rem; }
+  .sidebar-card h3 { font-size: 1.3rem; }
+  .capture-notes { gap: 10px; margin-top: 18px; padding-top: 18px; font-size: 0.82rem; }
   .summary-grid { grid-template-columns: 1fr; }
   .profile-card { grid-template-columns: auto 1fr; gap: 14px; padding: 20px; }
 }
