@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FaArrowLeft, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaUser, FaIdCard } from 'react-icons/fa'
+import { FaArrowLeft, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaUser, FaIdCard, FaCamera, FaImage } from 'react-icons/fa'
 
 function Registro() {
   const [showPassword, setShowPassword] = useState(false)
@@ -9,10 +9,28 @@ function Registro() {
   const [dni, setDni] = useState('')
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
+  const [fotoPerfil, setFotoPerfil] = useState(null)
+  const [fotoDni, setFotoDni] = useState(null)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCreated, setIsCreated] = useState(false)
   const navigate = useNavigate()
+
+  function handleFileChange(event, setFunction) {
+    const file = event.target.files[0]
+    if (!file) return
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Las imágenes deben pesar menos de 5MB')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setFunction(reader.result)
+    }
+    reader.readAsDataURL(file)
+  }
 
   async function submit(event) {
     event.preventDefault()
@@ -29,7 +47,14 @@ function Registro() {
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/usuarios/registro`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, email, dni, pin }),
+        body: JSON.stringify({
+          nombre,
+          email,
+          dni,
+          pin,
+          foto_perfil: fotoPerfil,
+          foto_dni: fotoDni,
+        }),
       })
       const result = await response.json()
 
@@ -91,6 +116,46 @@ function Registro() {
               <input name="dni" autoComplete="off" type="text" inputMode="numeric" pattern="[0-9]{4,20}" maxLength={20} placeholder="12345678" value={dni} onChange={(event) => setDni(event.target.value.replace(/\D/g, ''))} required />
             </div>
           </label>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', margin: '0.5rem 0' }}>
+            <label className="auth-field" style={{ margin: 0 }}>
+              <span>Foto de Perfil</span>
+              <div className="auth-input" style={{ position: 'relative', cursor: 'pointer' }}>
+                <FaCamera />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileChange(e, setFotoPerfil)}
+                  style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '0.85rem', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {fotoPerfil ? 'Cargada ✓' : 'Seleccionar'}
+                </span>
+              </div>
+              {fotoPerfil && (
+                <img src={fotoPerfil} alt="Preview perfil" style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover', marginTop: '6px' }} />
+              )}
+            </label>
+
+            <label className="auth-field" style={{ margin: 0 }}>
+              <span>Foto del DNI</span>
+              <div className="auth-input" style={{ position: 'relative', cursor: 'pointer' }}>
+                <FaImage />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileChange(e, setFotoDni)}
+                  style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '0.85rem', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {fotoDni ? 'Cargada ✓' : 'Seleccionar'}
+                </span>
+              </div>
+              {fotoDni && (
+                <img src={fotoDni} alt="Preview DNI" style={{ width: '65px', height: '45px', borderRadius: '4px', objectFit: 'cover', marginTop: '6px' }} />
+              )}
+            </label>
+          </div>
 
           <label className="auth-field">
             <span>PIN de acceso</span>

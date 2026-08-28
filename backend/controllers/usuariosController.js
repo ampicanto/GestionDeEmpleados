@@ -116,10 +116,9 @@ async function registrarAdministrador(req, res) {
   }
 }
 
-// Registrar empleado
 async function registrarEmpleado(req, res) {
   try {
-    const { nombre, email, dni, pin } = req.body;
+    const { nombre, email, dni, pin, foto_perfil, foto_dni } = req.body;
 
     if (!nombre || !email || !dni || !pin) {
       return res.status(400).json({
@@ -145,6 +144,7 @@ async function registrarEmpleado(req, res) {
     const nombreNormalizado = nombre.trim();
     const emailNormalizado = email.trim().toLowerCase();
     const dniNormalizado = dni.trim();
+
     const resultado = await usuariosModel.crearUsuario({
       rol_id: 3,
       puesto_id: null,
@@ -153,6 +153,8 @@ async function registrarEmpleado(req, res) {
       password_hash: null,
       dni: dniNormalizado,
       pin_hash: await bcrypt.hash(pin, 10),
+      foto_perfil: foto_perfil || null,
+      foto_dni: foto_dni || null,
       local_id: null,
       activo: true
     });
@@ -172,7 +174,7 @@ async function registrarEmpleado(req, res) {
       ok: true,
       message: correoEnviado
         ? "Empleado registrado y correo enviado"
-        : "Empleado registrado. El correo queda pendiente de configuración SMTP",
+        : "Empleado registrado correctamente",
       id: resultado.insertId,
       correoEnviado
     });

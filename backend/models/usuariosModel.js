@@ -106,10 +106,12 @@ async function crearUsuario(datos) {
       password_hash,
       dni,
       pin_hash,
+      foto_perfil,
+      foto_dni,
       local_id,
       activo
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       datos.rol_id,
@@ -119,6 +121,8 @@ async function crearUsuario(datos) {
       datos.password_hash,
       datos.dni,
       datos.pin_hash,
+      datos.foto_perfil || null,
+      datos.foto_dni || null,
       datos.local_id,
       datos.activo
     ]
