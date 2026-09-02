@@ -1,8 +1,17 @@
 :root {
-  font-family: Inter, 'Segoe UI', Roboto, sans-serif;
+  --color-ink: #202b36;
+  --color-ink-soft: #405466;
+  --color-muted: #637383;
+  --color-line: #d5dde5;
+  --color-accent: #f28c28;
+  --color-accent-cool: #3182ce;
+  --color-mint: #2ead78;
+  --color-surface: #ffffff;
+  --color-background: #f6f7f9;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #f8f3e7;
+  color: var(--color-ink);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -21,7 +30,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #07111d;
+  background: var(--color-background);
 }
 
 #root {

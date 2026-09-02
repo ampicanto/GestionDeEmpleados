@@ -2,10 +2,12 @@ const express = require("express");
 const router = express.Router();
 const usuariosController = require("../controllers/usuariosController");
 const { authenticate, requireAdmin } = require("../middleware/auth");
+const { loginLimiter, registroLimiter } = require("../middlewares/rateLimiter");
 
 // Autenticación y registro de empleados
-router.post("/login", usuariosController.iniciarSesion);
-router.post("/registro", usuariosController.registrarEmpleado);
+router.post("/login", loginLimiter, usuariosController.iniciarSesion);
+router.post("/registro", registroLimiter, usuariosController.registrarEmpleado);
+router.post("/registro-admin", registroLimiter, usuariosController.registrarAdministrador);
 router.get("/empleados", authenticate, requireAdmin, usuariosController.listarEmpleados);
 
 // CRUD de usuarios

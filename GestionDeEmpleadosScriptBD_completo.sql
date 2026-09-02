@@ -108,6 +108,9 @@ CREATE TABLE usuarios (
   dni VARCHAR(20) UNIQUE,
   pin_hash VARCHAR(255),
 
+  foto_perfil LONGTEXT,
+  foto_dni LONGTEXT,
+
   -- a qué local pertenece (NULL para super_admin, que ve todos)
   local_id INT NULL,
 

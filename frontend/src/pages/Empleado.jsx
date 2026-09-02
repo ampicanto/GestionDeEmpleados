@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import '../css/Empleado.css'
+import '../css/Empleado.simple.css'
 import {
   FaCamera,
   FaCheckCircle,
@@ -12,6 +12,7 @@ import {
   FaMoneyBillWave,
   FaUserCircle,
   FaSignOutAlt,
+  FaArrowLeft,
 } from 'react-icons/fa'
 
 function Empleado() {
@@ -194,68 +195,143 @@ function Empleado() {
   }
 
   return (
-    <div className="empleado-page">
-      <div className="empleado-shell">
-        <aside className="empleado-sidebar">
-          <div className="empleado-brand">
-            <span className="empleado-brand-mark">IC</span>
-            <div><strong>Ingenio</strong><span>Portal empleado</span></div>
+    <div className="empleado-simple">
+      <header className="emp-header">
+        <div className="emp-header-content">
+          <span className="emp-logo">IC</span>
+          <div>
+            <h1>¡Hola, {user.nombre || 'Empleado'}!</h1>
+            <p>{activeSection}</p>
           </div>
-          <div className="empleado-user-mini">
-            <div className="empleado-avatar">{(user.nombre || 'E').charAt(0).toUpperCase()}</div>
-            <div><strong>{user.nombre || 'Empleado'}</strong><span>Jornada activa</span></div>
-          </div>
-          <nav className="empleado-nav" aria-label="Navegación del empleado">
-            {navigationItems.map(({ label, icon: Icon }) => (
-              <button key={label} type="button" className={`empleado-nav-item ${activeSection === label ? 'active' : ''}`} onClick={() => setActiveSection(label)}>
-                <Icon /><span>{label}</span>
-              </button>
-            ))}
-          </nav>
-          <button type="button" className="empleado-logout" onClick={logout}><FaSignOutAlt /><span>Cerrar sesión</span></button>
-        </aside>
+        </div>
+      </header>
 
-        <main className="empleado-container">
-          {activeSection === 'Inicio' && (
-            <>
-              <div className="empleado-header">
-                <div><p className="empleado-kicker">Control de asistencia</p><h1>Marca tu entrada con una selfie</h1><div className="empleado-sub">Colócate frente a la cámara y toma una foto para registrar tu asistencia.</div></div>
-                <div className="permission-status">
-                  {isStarting ? <div className="perm-item"><FaSpinner className="spin" /> Solicitando cámara...</div> : cameraPermission === 'granted' ? <div className="perm-item"><FaCheckCircle /> Cámara autorizada</div> : cameraPermission === 'denied' ? <div className="perm-item"><FaBan /> Cámara denegada</div> : <div className="perm-item">Estado de cámara: {cameraPermission}</div>}
+      <main className="emp-content">
+        {activeSection === 'Inicio' && (
+          <section className="emp-section">
+            <h2>Marcar entrada</h2>
+            <p className="emp-description">Toma una selfie para registrar tu asistencia</p>
+            
+            <div className="camera-box">
+              <div className="camera-status">
+                {cameraPermission === 'granted' && <div className="status-ok"><FaCheckCircle /> Cámara autorizada</div>}
+                {cameraPermission === 'denied' && <div className="status-error"><FaBan /> Cámara denegada</div>}
+              </div>
+
+              <div className="camera-display">
+                <video ref={videoRef} className="video-feed" playsInline muted />
+                {!isCameraActive && !selfieData && <div className="camera-overlay">📸 Activa la cámara</div>}
+                {selfieData && <img src={selfieData} alt="Tu selfie" className="selfie-preview" />}
+              </div>
+
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+              <div className="camera-controls">
+                <button 
+                  onClick={isCameraActive ? captureSelfie : () => startStream(selectedDeviceId)}
+                  className="btn-action"
+                  disabled={isStarting || attendanceStatus === 'saving'}
+                >
+                  <FaCamera /> {isCameraActive ? 'Capturar' : 'Abrir cámara'}
+                </button>
+                
+                {isCameraActive && (
+                  <button onClick={stopCamera} className="btn-secondary">
+                    <FaBan /> Cerrar
+                  </button>
+                )}
+              </div>
+
+              <div className={`status-box status-${attendanceStatus}`}>
+                {attendanceStatus === 'saved' && <><FaCheckCircle /> Registrado</>}
+                {attendanceStatus === 'error' && <><FaBan /> Error</>}
+                {attendanceStatus === 'saving' && <><FaSpinner className="spin" /> Guardando...</>}
+                {attendanceStatus === 'idle' && <>Pendiente</>}
+              </div>
+
+              {attendanceMessage && <p className="msg">{attendanceMessage}</p>}
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'Asistencias' && (
+          <section className="emp-section">
+            <h2>Mis asistencias</h2>
+            <p className="emp-description">Historial de registros</p>
+            
+            <div className="card-simple">
+              <span>Estado hoy</span>
+              <strong>{attendanceStatus === 'saved' ? '✓ Registrada' : '○ Pendiente'}</strong>
+            </div>
+            
+            {registeredAt && (
+              <div className="card-simple">
+                <span>Último registro</span>
+                <strong>{registeredAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeSection === 'Sueldo' && (
+          <section className="emp-section">
+            <h2>Mi sueldo</h2>
+            <p className="emp-description">Información de pagos</p>
+            
+            <div className="empty-box">
+              <FaMoneyBillWave size={48} />
+              <p>Los datos de sueldo aparecerán aquí</p>
+            </div>
+          </section>
+        )}
+
+        {activeSection === 'Perfil' && (
+          <section className="emp-section">
+            <h2>Mi perfil</h2>
+            <p className="emp-description">Datos de mi cuenta</p>
+            
+            <div className="profile-box">
+              <div className="profile-avatar">{(user.nombre || 'E').charAt(0)}</div>
+              <div className="profile-info">
+                <div>
+                  <span>Nombre</span>
+                  <strong>{user.nombre || '-'}</strong>
+                </div>
+                <div>
+                  <span>Rol</span>
+                  <strong>{user.rol || 'Empleado'}</strong>
+                </div>
+                <div>
+                  <span>ID</span>
+                  <strong>{user.id || '-'}</strong>
                 </div>
               </div>
-              <div className="camera-area">
-                <div className={`camera-card ${attendanceStatus === 'capturing' || attendanceStatus === 'saving' ? 'is-processing' : ''}`}>
-                  <div className="camera-heading"><div><span className="camera-label">Cámara frontal</span><h2>{attendanceStatus === 'saved' ? 'Asistencia registrada' : 'Prepara tu selfie'}</h2></div><FaCamera /></div>
-                  <div className="camera-frame">
-                    <video ref={videoRef} className="camera-video" playsInline muted />
-                    {!selfieData && <span className="camera-guide" aria-hidden="true" />}
-                    {!isStarting && !isCameraActive && !selfieData && <div className="camera-placeholder">Activa la cámara para comenzar</div>}
-                    {selfieData && <img src={selfieData} alt="Selfie capturada" className="captured-selfie" />}
-                  </div>
-                  <canvas ref={canvasRef} className="camera-canvas" style={{ display: 'none' }} />
-                  <div className="camera-actions">
-                    <select aria-label="Seleccionar cámara" value={selectedDeviceId || ''} onChange={handleDeviceChange}>{devices.map((d) => <option value={d.deviceId} key={d.deviceId}>{d.label || `Cámara ${d.deviceId}`}</option>)}</select>
-                    <button onClick={isCameraActive ? captureSelfie : () => startStream(selectedDeviceId)} className={`btn camera-capture-button ${attendanceStatus === 'capturing' || attendanceStatus === 'saving' ? 'is-processing' : ''}`} disabled={isStarting || attendanceStatus === 'capturing' || attendanceStatus === 'saving'}>{isStarting ? <FaSpinner className="spin" /> : <FaCamera />}{isStarting ? 'Abriendo cámara...' : attendanceStatus === 'saving' ? 'Guardando asistencia...' : isCameraActive ? 'Tomar selfie y marcar asistencia' : 'Activar cámara'}</button>
-                    {isCameraActive && <button onClick={stopCamera} className="btn btn-secondary"><FaBan />Detener cámara</button>}
-                  </div>
-                </div>
-                  <div className="sidebar-card">
-                  <div className={`status-icon status-${attendanceStatus}`}><FaCheckCircle /></div><span className="camera-label">Estado de registro</span><h3>{attendanceStatus === 'saved' ? 'Asistencia registrada' : attendanceStatus === 'error' ? 'No se pudo registrar' : attendanceStatus === 'saving' ? 'Guardando registro' : 'Aún no registrada'}</h3>
-                  <p className="empleado-sub">{attendanceMessage || 'Necesitamos una selfie clara, con tu rostro visible y buena iluminación.'}</p>
-                  {registeredAt && <time className="registered-time" dateTime={registeredAt.toISOString()}>Registrada hoy a las {registeredAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>}
-                  {(attendanceStatus === 'saved' || attendanceStatus === 'error') && <button type="button" className="retake-button" onClick={() => { setSelfieData(null); setAttendanceStatus('idle'); setAttendanceMessage('') }}><FaSyncAlt /> Tomar otra selfie</button>}
-                  <div className="capture-notes"><span><FaCheckCircle /> Rostro visible</span><span><FaCheckCircle /> Buena iluminación</span><span><FaCheckCircle /> Cámara autorizada</span></div>
-                </div>
-              </div>
-            </>
-          )}
+            </div>
 
-                  {activeSection === 'Asistencias' && <section className="empleado-section-view"><p className="empleado-kicker">Historial</p><h1>Mis asistencias</h1><p className="empleado-sub">Consulta el estado de tus registros de entrada y salida.</p><div className="summary-grid"><article className="summary-card"><span>Estado de hoy</span><strong>{attendanceStatus === 'saved' ? 'Registrada' : 'Pendiente'}</strong><small>{attendanceMessage || 'Aún no hay un fichaje en esta sesión.'}</small></article><article className="summary-card"><span>Último registro</span><strong>{attendanceStatus === 'saved' ? 'Guardado ahora' : 'Sin registros'}</strong><small>{registeredAt ? `Registrado a las ${registeredAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` : 'La hora y ubicación se guardan automáticamente.'}</small></article></div><button type="button" className="btn section-action" onClick={() => setActiveSection('Inicio')}><FaCamera /> Registrar asistencia</button></section>}
-          {activeSection === 'Sueldo' && <section className="empleado-section-view"><p className="empleado-kicker">Información laboral</p><h1>Mi sueldo</h1><p className="empleado-sub">Aquí podrás consultar tus pagos y recibos cuando estén disponibles.</p><div className="empty-state"><FaMoneyBillWave /><strong>Información pendiente</strong><span>Tu empresa todavía no ha cargado datos de sueldo.</span></div></section>}
-          {activeSection === 'Perfil' && <section className="empleado-section-view"><p className="empleado-kicker">Cuenta personal</p><h1>Mi perfil</h1><p className="empleado-sub">Datos asociados a tu cuenta de empleado.</p><div className="profile-card"><div className="profile-avatar">{(user.nombre || 'E').charAt(0).toUpperCase()}</div><div><span>Nombre completo</span><strong>{user.nombre || 'No disponible'}</strong></div><div><span>Rol</span><strong>{user.rol || 'Empleado'}</strong></div><div><span>ID de usuario</span><strong>{user.id || 'No disponible'}</strong></div></div></section>}
-        </main>
-      </div>
+            <button onClick={logout} className="btn-logout">
+              <FaSignOutAlt /> Cerrar sesión
+            </button>
+          </section>
+        )}
+      </main>
+
+      <nav className="emp-bottom-menu">
+        {[
+          { label: 'Inicio', icon: FaHome },
+          { label: 'Asistencias', icon: FaCalendarCheck },
+          { label: 'Sueldo', icon: FaMoneyBillWave },
+          { label: 'Perfil', icon: FaUserCircle },
+        ].map(({ label, icon: Icon }) => (
+          <button
+            key={label}
+            className={`menu-item ${activeSection === label ? 'active' : ''}`}
+            onClick={() => setActiveSection(label)}
+          >
+            <Icon size={24} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   )
 }
