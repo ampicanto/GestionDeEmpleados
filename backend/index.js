@@ -4,19 +4,40 @@ const express = require('express')
 const cors = require('cors')
 const { testConnection } = require('./config/db')
 
+// Routers
+const usuariosRoutes = require("./routes/usuariosRoutes")
+const fichajesRoutes = require('./routes/fichajesRoutes')
+const projectsRouter = require('./controllers/projects')
+
 const app = express()
 const PORT = process.env.PORT || 3000
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+]
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+      return
+    }
+
+    callback(new Error('No permitido por CORS'))
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }))
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 
-// Routers
-const projectsRouter = require('./controllers/projects')
-app.use('/api/projects', projectsRouter)
+// Rutas API
+app.use("/api/usuarios", usuariosRoutes)
+app.use("/api/fichajes", fichajesRoutes)
+app.use("/api/projects", projectsRouter)
 
 app.get('/', (req, res) => {
   res.json({

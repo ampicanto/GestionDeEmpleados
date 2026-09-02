@@ -1,0 +1,637 @@
+/* === DISEÑO SIMPLE PARA EMPLEADO === */
+
+.empleado-simple {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fcff 0%, #f1f9f7 40%, #ebf7fb 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.emp-header {
+  background: linear-gradient(135deg, #16313b 0%, #1f4250 100%);
+  color: white;
+  padding: 20px 16px;
+  box-shadow: 0 2px 12px rgba(22, 49, 59, 0.15);
+}
+
+.emp-header-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 100%;
+}
+
+.emp-logo {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #e2a15e;
+  color: #16313b;
+  font-weight: 700;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.emp-header h1 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.emp-header p {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.emp-content {
+  flex: 1;
+  padding: 24px 16px;
+  padding-bottom: 100px;
+  overflow-y: auto;
+}
+
+.emp-section {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.emp-section h2 {
+  margin: 0 0 8px;
+  font-size: 1.8rem;
+  color: #16313b;
+}
+
+.emp-description {
+  margin: 0 0 24px;
+  color: #4a6269;
+  font-size: 0.95rem;
+}
+
+/* === CAMERA BOX === */
+
+.camera-box {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.camera-status {
+  padding: 12px;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.status-ok {
+  background: #eaf8f1;
+  color: #246b57;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.status-error {
+  background: #fff0ed;
+  color: #9b3d31;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.camera-display {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 16px;
+  background: #f0f0f0;
+  overflow: hidden;
+  border: 2px solid #d7e5e2;
+}
+
+.video-feed,
+.selfie-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  font-size: 2rem;
+}
+
+.camera-controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-action {
+  flex: 1;
+  min-height: 48px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  background: #16313b;
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 200ms ease;
+}
+
+.btn-action:hover:not(:disabled) {
+  background: #1f4250;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(22, 49, 59, 0.2);
+}
+
+.btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  flex: 1;
+  min-height: 48px;
+  padding: 12px 20px;
+  border: 2px solid #d7e5e2;
+  border-radius: 12px;
+  background: white;
+  color: #16313b;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 200ms ease;
+}
+
+.btn-secondary:hover {
+  border-color: #9b3d31;
+  color: #9b3d31;
+}
+
+.status-box {
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1rem;
+}
+
+.status-idle {
+  background: #f3f5f7;
+  color: #4a6269;
+}
+
+.status-saving {
+  background: #e8f4f9;
+  color: #2a5f7f;
+}
+
+.status-saved {
+  background: #eaf8f1;
+  color: #246b57;
+}
+
+.status-error {
+  background: #fff0ed;
+  color: #9b3d31;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.msg {
+  padding: 12px;
+  border-radius: 12px;
+  background: #e8f4f9;
+  color: #2a5f7f;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* === TARJETAS SIMPLES === */
+
+.card-simple {
+  padding: 16px;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid #d7e5e2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.card-simple span {
+  color: #4a6269;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.card-simple strong {
+  color: #16313b;
+  font-size: 1.2rem;
+}
+
+/* === EMPTY STATE === */
+
+.empty-box {
+  padding: 48px 24px;
+  text-align: center;
+  color: #4a6269;
+  font-size: 0.95rem;
+}
+
+.empty-box svg {
+  opacity: 0.3;
+  margin-bottom: 16px;
+}
+
+/* Shared application palette. */
+.empleado-simple {
+  background: var(--system-background, linear-gradient(135deg, #f7fbfd, #e5f3f1));
+  color: var(--system-dark, #102a43);
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+}
+
+.emp-header {
+  background: linear-gradient(160deg, #102a43, #174a6e);
+  box-shadow: 0 2px 16px rgba(16, 42, 67, 0.18);
+}
+
+.emp-logo {
+  background: linear-gradient(135deg, #f08c6c, #ffb36f);
+  color: #102a43;
+}
+
+.emp-section h2,
+.card-simple strong {
+  color: #102a43;
+}
+
+.emp-description,
+.card-simple span,
+.empty-box {
+  color: #526779;
+}
+
+.camera-display,
+.card-simple {
+  border-color: var(--system-line, #c9d9e6);
+}
+
+.btn-action {
+  background: linear-gradient(135deg, #102a43, #174a6e);
+}
+
+.btn-action:hover:not(:disabled) {
+  background: #2f80c0;
+  box-shadow: 0 4px 12px rgba(47, 128, 192, 0.25);
+}
+
+.btn-secondary {
+  border-color: #c9d9e6;
+  color: #102a43;
+}
+
+.emp-bottom-menu {
+  border-top: 1px solid rgba(47, 128, 192, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -8px 24px rgba(16, 42, 67, 0.08);
+}
+
+.menu-item {
+  color: #526779;
+}
+
+.menu-item.active {
+  color: #102a43;
+}
+
+.status-ok,
+.status-saved {
+  background: #dff7ef;
+  color: #08745f;
+}
+
+.status-saving,
+.msg {
+  background: #e1f1fb;
+  color: #1d6395;
+}
+
+.status-error {
+  background: #fff0eb;
+  color: #ad4935;
+}
+
+/* Palette option 1 for the employee view. */
+.empleado-simple {
+  background: linear-gradient(135deg, #ffffff 0%, #f4f8f6 58%, #e6f3ef 100%);
+  color: #123c45;
+}
+
+.emp-header {
+  background: linear-gradient(160deg, #123c45, #1e6570);
+}
+
+.emp-logo {
+  background: linear-gradient(135deg, #b8d943, #d9eb72);
+  color: #123c45;
+}
+
+.btn-action {
+  background: linear-gradient(135deg, #123c45, #1e6570);
+}
+
+.btn-action:hover:not(:disabled) {
+  background: #1e6570;
+}
+
+.emp-section h2,
+.card-simple strong {
+  color: #123c45;
+}
+
+.emp-description,
+.card-simple span,
+.empty-box {
+  color: #587276;
+}
+
+.camera-display,
+.card-simple,
+.btn-secondary {
+  border-color: #c9ded9;
+}
+
+.status-ok,
+.status-saved {
+  background: #dff5e9;
+  color: #187c58;
+}
+
+/* Palette option 2 for the employee view. */
+.empleado-simple {
+  background: linear-gradient(135deg, #ffffff 0%, #f6f7f9 60%, #eaf2f8 100%);
+  color: #202b36;
+}
+
+.emp-header {
+  background: linear-gradient(160deg, #202b36, #405466);
+}
+
+.emp-logo {
+  background: linear-gradient(135deg, #f28c28, #ffb451);
+  color: #202b36;
+}
+
+.btn-action {
+  background: linear-gradient(135deg, #202b36, #405466);
+}
+
+.btn-action:hover:not(:disabled) {
+  background: #3182ce;
+}
+
+.emp-section h2,
+.card-simple strong {
+  color: #202b36;
+}
+
+.emp-description,
+.card-simple span,
+.empty-box {
+  color: #637383;
+}
+
+.camera-display,
+.card-simple,
+.btn-secondary {
+  border-color: #d5dde5;
+}
+
+.status-ok,
+.status-saved {
+  background: #e1f6eb;
+  color: #21845d;
+}
+
+.emp-bottom-menu {
+  border-top-color: rgba(49, 130, 206, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.menu-item {
+  color: #637383;
+}
+
+.menu-item.active {
+  color: #202b36;
+  background: linear-gradient(135deg, #ffe0b2, #cfe5f8);
+}
+
+.empty-box p {
+  margin: 0;
+}
+
+/* === PROFILE === */
+
+.profile-box {
+  display: flex;
+  gap: 20px;
+  padding: 24px;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #d7e5e2;
+  margin-bottom: 24px;
+}
+
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #16313b, #1f4250);
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.profile-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+}
+
+.profile-info > div {
+  display: grid;
+  gap: 4px;
+}
+
+.profile-info span {
+  font-size: 0.8rem;
+  color: #4a6269;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.profile-info strong {
+  font-size: 1.1rem;
+  color: #16313b;
+}
+
+.btn-logout {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid #9b3d31;
+  border-radius: 12px;
+  background: white;
+  color: #9b3d31;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 200ms ease;
+}
+
+.btn-logout:hover {
+  background: #9b3d31;
+  color: white;
+}
+
+/* === MENÚ INFERIOR === */
+
+.emp-bottom-menu {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: white;
+  border-top: 1px solid #d7e5e2;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  padding: 0;
+  list-style: none;
+  z-index: 100;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.menu-item {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #4a6269;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: all 200ms ease;
+  padding: 8px;
+}
+
+.menu-item:hover {
+  background: rgba(22, 49, 59, 0.05);
+}
+
+.menu-item.active {
+  color: #16313b;
+  background: linear-gradient(135deg, rgba(226, 161, 94, 0.1), rgba(79, 168, 199, 0.1));
+}
+
+.menu-item svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* === RESPONSIVE === */
+
+@media (max-width: 640px) {
+  .emp-header {
+    padding: 16px 12px;
+  }
+
+  .emp-logo {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .emp-header h1 {
+    font-size: 1.1rem;
+  }
+
+  .emp-content {
+    padding: 16px 12px;
+    padding-bottom: 90px;
+  }
+
+  .emp-section {
+    max-width: 100%;
+  }
+
+  .emp-section h2 {
+    font-size: 1.5rem;
+  }
+
+  .camera-controls {
+    flex-direction: column;
+  }
+
+  .btn-action,
+  .btn-secondary {
+    width: 100%;
+  }
+
+  .profile-box {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .profile-avatar {
+    margin: 0 auto;
+  }
+}
