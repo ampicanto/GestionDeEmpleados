@@ -8,6 +8,8 @@ const { testConnection } = require('./config/db')
 const usuariosRoutes = require("./routes/usuariosRoutes")
 const fichajesRoutes = require('./routes/fichajesRoutes')
 const projectsRouter = require('./controllers/projects')
+const exportacionesRoutes = require('./routes/exportacionesRoutes');
+
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -23,7 +25,7 @@ app.use(express.urlencoded({ extended: true }))
 app.use("/api/usuarios", usuariosRoutes)
 app.use("/api/fichajes", fichajesRoutes)
 app.use("/api/projects", projectsRouter)
-
+app.use('/api/exportaciones', exportacionesRoutes);
 app.get('/', (req, res) => {
   res.json({
     message: 'API de Ingenio Constructora',

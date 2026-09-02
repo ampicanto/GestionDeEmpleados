@@ -10,6 +10,9 @@ import {
   FaSearch,
   FaPlus,
   FaChevronRight,
+  FaFileExcel,
+  FaTimes,
+  FaIdCard,
 } from 'react-icons/fa'
 import NuevoProyecto from '../components/NuevoProyecto'
 
@@ -59,6 +62,8 @@ function AdminPage() {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false)
   const [localProjects, setLocalProjects] = useState([])
   const [teamMembers, setTeamMembers] = useState([])
+  const [isExporting, setIsExporting] = useState(false)
+  const [selectedMemberModal, setSelectedMemberModal] = useState(null)
 
   useEffect(() => {
     loadProjects()
@@ -96,6 +101,39 @@ function AdminPage() {
     }
   }
 
+  const descargarExcel = async () => {
+    setIsExporting(true)
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/exportaciones/empleados`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Error al generar el archivo Excel')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Nomina_Empleados_${new Date().toISOString().split('T')[0]}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error(error)
+      alert(error.message || 'No se pudo descargar el archivo Excel')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const normalizedSearch = search.toLowerCase()
 
   const filteredProjects = useMemo(
@@ -127,7 +165,7 @@ function AdminPage() {
   const filteredMembers = useMemo(
     () =>
       teamMembers.filter((member) =>
-        [member.name, member.role, member.puesto, member.rol]
+        [member.name, member.role, member.puesto, member.rol, member.dni]
           .some((value) => String(value || '').toLowerCase().includes(normalizedSearch))
       ),
     [teamMembers, normalizedSearch]
@@ -162,7 +200,7 @@ function AdminPage() {
     },
     Reportes: {
       title: 'Consulta indicadores clave para tomar decisiones.',
-      text: 'Analiza desempeño, cumplimiento y avance general con datos simulados listos para integrar.',
+      text: 'Analiza desempeño, cumplimiento y avance general con datos exportables a Excel.',
       badge: 'Reportes',
     },
     Configuración: {
@@ -209,13 +247,25 @@ function AdminPage() {
             <FaSearch />
             <input
               type="text"
-              placeholder="Buscar proyecto, tarea o colaborador"
+              placeholder="Buscar proyecto, colaborador o DNI"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
 
           <div className="admin-topbar-actions">
+            {/* Botón Exportar a Excel */}
+            <button
+              type="button"
+              className="admin-primary-btn"
+              style={{ backgroundColor: '#198754', borderColor: '#198754' }}
+              onClick={descargarExcel}
+              disabled={isExporting}
+            >
+              <FaFileExcel />
+              <span>{isExporting ? 'Exportando...' : 'Exportar Excel'}</span>
+            </button>
+
             <div className="settings-menu-wrapper">
               <button
                 type="button"
@@ -352,24 +402,134 @@ function AdminPage() {
           <div className="admin-panel-header">
             <div>
               <p className="eyebrow">Equipo</p>
-              <h2>Colaboradores destacados</h2>
+              <h2>Colaboradores destacados ({filteredMembers.length})</h2>
             </div>
+            <button
+              type="button"
+              className="admin-link-btn"
+              onClick={descargarExcel}
+              style={{ color: '#198754' }}
+            >
+              <FaFileExcel /> Descargar Nómina
+            </button>
           </div>
 
           <div className="admin-team-list">
             {filteredMembers.map((member) => (
-              <div className="admin-team-item" key={member.id || member.name}>
-                <div className="admin-avatar">{String(member.name || 'E').charAt(0).toUpperCase()}</div>
-                <div>
+              <div
+                className="admin-team-item"
+                key={member.id || member.name}
+                onClick={() => setSelectedMemberModal(member)}
+                style={{ cursor: 'pointer' }}
+                title="Clic para ver documentos de identidad"
+              >
+                {member.foto_perfil ? (
+                  <img
+                    src={member.foto_perfil}
+                    alt={member.name}
+                    className="admin-avatar"
+                    style={{ objectFit: 'cover', borderRadius: '50%', width: '40px', height: '40px' }}
+                  />
+                ) : (
+                  <div className="admin-avatar">{String(member.name || 'E').charAt(0).toUpperCase()}</div>
+                )}
+                <div style={{ flex: 1 }}>
                   <h3>{member.name || 'Empleado sin nombre'}</h3>
-                  <p>{member.role || 'Empleado'}</p>
+                  <p>{member.role || 'Empleado'} {member.dni ? `· DNI: ${member.dni}` : ''}</p>
                 </div>
+                {member.foto_dni && (
+                  <span style={{ fontSize: '0.8rem', color: '#0d6efd', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <FaIdCard /> DNI adjunto
+                  </span>
+                )}
               </div>
             ))}
             {filteredMembers.length === 0 && <p className="admin-empty-state">No hay colaboradores que coincidan con la búsqueda.</p>}
           </div>
         </section>
       </main>
+
+      {/* Modal para ver fotos del empleado */}
+      {selectedMemberModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fff',
+            color: '#333',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '500px',
+            width: '90%',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+            position: 'relative'
+          }}>
+            <button
+              type="button"
+              onClick={() => setSelectedMemberModal(null)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'none',
+                border: 'none',
+                fontSize: '18px',
+                cursor: 'pointer',
+                color: '#666'
+              }}
+            >
+              <FaTimes />
+            </button>
+
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '1.25rem' }}>{selectedMemberModal.name}</h3>
+            <p style={{ margin: '0 0 16px 0', color: '#666', fontSize: '0.9rem' }}>
+              DNI: <strong>{selectedMemberModal.dni || 'No registrado'}</strong> | Rol: {selectedMemberModal.role}
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '12px' }}>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px' }}>Foto de Perfil</p>
+                {selectedMemberModal.foto_perfil ? (
+                  <img
+                    src={selectedMemberModal.foto_perfil}
+                    alt="Perfil"
+                    style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #ddd' }}
+                  />
+                ) : (
+                  <div style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5', borderRadius: '8px', color: '#999', fontSize: '0.85rem' }}>
+                    Sin foto
+                  </div>
+                )}
+              </div>
+
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '8px' }}>Foto del DNI</p>
+                {selectedMemberModal.foto_dni ? (
+                  <img
+                    src={selectedMemberModal.foto_dni}
+                    alt="DNI"
+                    style={{ width: '100%', height: '140px', objectFit: 'contain', background: '#000', borderRadius: '8px', border: '1px solid #ddd' }}
+                  />
+                ) : (
+                  <div style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5', borderRadius: '8px', color: '#999', fontSize: '0.85rem' }}>
+                    Sin DNI
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showNew && (
         <NuevoProyecto
           teamMembers={teamMembers}
