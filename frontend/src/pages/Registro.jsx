@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FaArrowLeft, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaUser, FaIdCard } from 'react-icons/fa'
+import { FaArrowLeft, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaUser, FaIdCard, FaCamera, FaUpload, FaTrashAlt } from 'react-icons/fa'
+import systemLogo from '../assets/images.png'
 
 function Registro() {
   const [showPassword, setShowPassword] = useState(false)
@@ -9,10 +10,34 @@ function Registro() {
   const [dni, setDni] = useState('')
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
+  const [fotoDni, setFotoDni] = useState(null)
+  const [fotoPerfil, setFotoPerfil] = useState(null)
+  const [fotoDniPreview, setFotoDniPreview] = useState('')
+  const [fotoPerfilPreview, setFotoPerfilPreview] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCreated, setIsCreated] = useState(false)
   const navigate = useNavigate()
+
+  function handleFileChange(event, setFile, setPreview) {
+    const file = event.target.files[0]
+    if (!file) return
+
+    setFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setPreview(reader.result)
+    reader.readAsDataURL(file)
+  }
+
+  function removeFile(setFile, setPreview) {
+    setFile(null)
+    setPreview('')
+  }
+
+  function formatFileSize(bytes) {
+    if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
 
   async function submit(event) {
     event.preventDefault()
@@ -23,13 +48,25 @@ function Registro() {
       return
     }
 
+    if (!fotoDni || !fotoPerfil) {
+      setError('Debes subir una foto del DNI y una foto de perfil')
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
+      const formData = new FormData()
+      formData.append('nombre', nombre)
+      formData.append('email', email)
+      formData.append('dni', dni)
+      formData.append('pin', pin)
+      formData.append('fotoDni', fotoDni)
+      formData.append('fotoPerfil', fotoPerfil)
+
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/usuarios/registro`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre, email, dni, pin }),
+        body: formData,
       })
       const result = await response.json()
 
@@ -48,23 +85,23 @@ function Registro() {
 
   return (
     <div className="auth-page">
-      <div className="auth-card">
+      <div className="auth-card auth-register-card">
         <Link to="/" className="auth-back">
           <FaArrowLeft />
           <span>Volver</span>
         </Link>
 
         <div className="auth-brand">
-          <span className="auth-brand-mark">IC</span>
+          <img className="auth-brand-mark" src={systemLogo} alt="Gestión Empleados" />
           <div>
-            <h2>Ingenio Constructora</h2>
+            <h2>Gestión Empleados</h2>
             <p>Registro de usuario</p>
           </div>
         </div>
 
         <h1>Crear cuenta</h1>
         <p className="auth-description">
-          Completa tus datos para acceder a la plataforma y gestionar tus proyectos.
+          Registra tu información para incorporarte al equipo y acceder a la plataforma.
         </p>
 
         <form className="auth-form" onSubmit={submit}>
@@ -75,6 +112,58 @@ function Registro() {
               <input type="text" placeholder="Tu nombre" value={nombre} onChange={(event) => setNombre(event.target.value)} required />
             </div>
           </label>
+
+          <div className="auth-field file-upload-field">
+            <span>Foto del DNI</span>
+            <div className={`file-upload-box ${fotoDni ? 'has-file' : ''}`}>
+              {fotoDni ? (
+                <>
+                  <img src={fotoDniPreview} alt="Vista previa del documento de identidad" className="file-upload-preview" />
+                  <div className="file-upload-details">
+                    <strong>{fotoDni.name}</strong>
+                    <span>{formatFileSize(fotoDni.size)}</span>
+                    <div className="file-upload-actions">
+                      <label htmlFor="foto-dni-input" className="file-upload-change"><FaUpload /> Cambiar</label>
+                      <button type="button" className="file-upload-remove" onClick={() => removeFile(setFotoDni, setFotoDniPreview)}><FaTrashAlt /> Eliminar</button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <label htmlFor="foto-dni-input" className="file-upload-empty">
+                  <FaIdCard />
+                  <strong>Selecciona la foto del DNI</strong>
+                  <span>JPG, PNG o WEBP</span>
+                </label>
+              )}
+              <input id="foto-dni-input" className="file-upload-input" type="file" accept="image/*" onClick={(event) => { event.currentTarget.value = '' }} onChange={(event) => handleFileChange(event, setFotoDni, setFotoDniPreview)} />
+            </div>
+          </div>
+
+          <div className="auth-field file-upload-field">
+            <span>Foto de perfil</span>
+            <div className={`file-upload-box ${fotoPerfil ? 'has-file' : ''}`}>
+              {fotoPerfil ? (
+                <>
+                  <img src={fotoPerfilPreview} alt="Vista previa de la foto de perfil" className="file-upload-preview" />
+                  <div className="file-upload-details">
+                    <strong>{fotoPerfil.name}</strong>
+                    <span>{formatFileSize(fotoPerfil.size)}</span>
+                    <div className="file-upload-actions">
+                      <label htmlFor="foto-perfil-input" className="file-upload-change"><FaUpload /> Cambiar</label>
+                      <button type="button" className="file-upload-remove" onClick={() => removeFile(setFotoPerfil, setFotoPerfilPreview)}><FaTrashAlt /> Eliminar</button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <label htmlFor="foto-perfil-input" className="file-upload-empty">
+                  <FaCamera />
+                  <strong>Selecciona tu foto de perfil</strong>
+                  <span>JPG, PNG o WEBP</span>
+                </label>
+              )}
+              <input id="foto-perfil-input" className="file-upload-input" type="file" accept="image/*" onClick={(event) => { event.currentTarget.value = '' }} onChange={(event) => handleFileChange(event, setFotoPerfil, setFotoPerfilPreview)} />
+            </div>
+          </div>
 
           <label className="auth-field">
             <span>Correo electrónico</span>
@@ -96,7 +185,7 @@ function Registro() {
             <span>PIN de acceso</span>
             <div className="auth-input auth-input-password">
               <FaLock />
-              <input type={showPassword ? 'text' : 'password'} inputMode="numeric" placeholder="1234" value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, ''))} minLength={4} maxLength={8} required />
+              <input type={showPassword ? 'text' : 'password'} inputMode="numeric" placeholder="1234" value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, ''))} minLength={4} maxLength={4} required />
               <button
                 type="button"
                 className="password-toggle"
@@ -112,7 +201,7 @@ function Registro() {
             <span>Repetir PIN</span>
             <div className="auth-input">
               <FaLock />
-              <input type="password" inputMode="numeric" placeholder="1234" value={confirmPin} onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, ''))} minLength={4} maxLength={8} required />
+              <input type="password" inputMode="numeric" placeholder="1234" value={confirmPin} onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, ''))} minLength={4} maxLength={4} required />
             </div>
           </label>
 

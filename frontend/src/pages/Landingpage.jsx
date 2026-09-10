@@ -1,56 +1,57 @@
 import { useEffect, useState } from 'react'
 import '../App.css'
 import { FaRegUser, FaSignInAlt, FaHardHat, FaTools, FaLeaf, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+import systemLogo from '../assets/images.png'
 
 const stats = [
-  { value: '25+', label: 'años de experiencia' },
-  { value: '120+', label: 'obras ejecutadas' },
-  { value: '98%', label: 'cumplimiento operativo' },
+  { value: '120+', label: 'empleados registrados' },
+  { value: '98%', label: 'asistencias controladas' },
+  { value: '24/7', label: 'información disponible' },
 ]
 
 const services = [
   {
     icon: <FaHardHat />,
-    title: 'Obras civiles',
-    description: 'Plataformas, accesos, estructuras y desarrollos que soportan la operación industrial.',
+    title: 'Control de asistencia',
+    description: 'Registra entradas y salidas con ubicación, hora y evidencia fotográfica en un solo lugar.',
   },
   {
     icon: <FaTools />,
-    title: 'Ingeniería industrial',
-    description: 'Diseño y optimización de procesos para elevar la eficiencia y reducir tiempos de parada.',
+    title: 'Gestión de equipos',
+    description: 'Organiza colaboradores, proyectos y jornadas con una vista clara para cada responsable.',
   },
   {
     icon: <FaLeaf />,
-    title: 'Sostenibilidad',
-    description: 'Soluciones pensadas para una producción más limpia, segura y rentable.',
+    title: 'Reportes operativos',
+    description: 'Consulta indicadores y novedades para tomar decisiones rápidas con información confiable.',
   },
 ]
 
 const process = [
-  { step: '01', title: 'Diagnóstico', description: 'Analizamos la operación, los retos del terreno y la capacidad instalada.' },
-  { step: '02', title: 'Diseño', description: 'Planeamos cada intervención con ingeniería precisa y enfoque industrial.' },
-  { step: '03', title: 'Ejecución', description: 'Coordinamos obra, seguridad y tiempos para entregar con calidad.' },
-  { step: '04', title: 'Mantenimiento', description: 'Acompañamos la vida útil del activo con soporte continuo y mejora.' },
+  { step: '01', title: 'Registra', description: 'Cada colaborador marca su jornada de forma rápida y segura.' },
+  { step: '02', title: 'Organiza', description: 'Asigna personas y proyectos desde un panel centralizado.' },
+  { step: '03', title: 'Supervisa', description: 'Revisa incidencias, ubicaciones y solicitudes en tiempo real.' },
+  { step: '04', title: 'Decide', description: 'Convierte los registros diarios en acciones claras para tu equipo.' },
 ]
 
 const showcaseSlides = [
   {
-    tag: 'Obra civil',
-    title: 'Infraestructura industrial preparada para crecer',
-    description: 'Proyectos ejecutados con precisión, seguridad y continuidad operativa.',
-    image: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80',
+    tag: 'Equipo conectado',
+    title: 'Toda tu operación en una sola vista',
+    description: 'Personas, proyectos y jornadas organizados para trabajar mejor.',
+    image: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=80',
   },
   {
-    tag: 'Ingeniería',
-    title: 'Soluciones eficientes para entornos complejos',
-    description: 'Diseño técnico con enfoque en productividad, mantenimiento y desempeño.',
-    image: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
+    tag: 'Seguimiento simple',
+    title: 'Información clara para cada decisión',
+    description: 'Consulta el estado de tu equipo sin depender de hojas de cálculo.',
+    image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1200&q=80',
   },
   {
-    tag: 'Sostenibilidad',
-    title: 'Construcción responsable y de largo plazo',
-    description: 'Estrategias que potencian la operación sin comprometer la eficiencia.',
-    image: 'https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?auto=format&fit=crop&w=1200&q=80',
+    tag: 'Gestión diaria',
+    title: 'Una jornada más ordenada y eficiente',
+    description: 'Automatiza el seguimiento y dedica más tiempo a las personas.',
+    image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80',
   },
 ]
 
@@ -80,6 +81,10 @@ function Landingpage() {
     <div className="landing-page">
       <header className="hero-section">
         <div className="hero-content">
+          <div className="landing-brand">
+            <img src={systemLogo} alt="Gestión Empleados" />
+            <span>Gestión Empleados</span>
+          </div>
           <div className="topbar-actions">
             <a href="/registro" className="topbar-btn topbar-btn-outline">
               <FaRegUser />
@@ -90,18 +95,18 @@ function Landingpage() {
               <span>Iniciar sesión</span>
             </a>
           </div>
-          <div className="hero-badge">Ingenio • Construcción • Ingeniería</div>
-          <h1>Construimos la base de una industria más fuerte.</h1>
+          <div className="hero-badge">Personas • Asistencia • Organización</div>
+          <h1>El pulso de tu equipo, siempre bajo control.</h1>
           <p className="hero-text">
-            Creamos infraestructura confiable para ingenios y plantas agroindustriales, con obra civil,
-            ingeniería y ejecución orientada a resultados reales.
+            Gestión Empleados reúne asistencia, proyectos y seguimiento del personal en una plataforma
+            clara para que tu empresa avance con información real.
           </p>
           <div className="hero-actions">
             <a href="#proyectos" className="btn btn-primary">
-              Ver proyectos
+              Conocer la plataforma
             </a>
-            <a href="#contacto" className="btn btn-secondary">
-              Cotizar obra
+            <a href="/login" className="btn btn-secondary">
+              Acceder al sistema
             </a>
           </div>
 
@@ -117,16 +122,16 @@ function Landingpage() {
 
         <div className="hero-stack">
           <aside className="hero-card">
-            <div className="hero-card-topline">Por qué nos eligen</div>
-            <h2>Soluciones que combinan tradición, tecnología y rigor operativo.</h2>
+            <div className="hero-card-topline">Todo en un mismo lugar</div>
+            <h2>Una gestión más simple para equipos que necesitan avanzar.</h2>
             <ul>
-              <li>Planificación integral de obra</li>
-              <li>Equipo especializado en entornos industriales</li>
-              <li>Enfoque en seguridad, continuidad y rentabilidad</li>
+              <li>Asistencia con ubicación y selfie</li>
+              <li>Proyectos y colaboradores organizados</li>
+              <li>Reportes listos para tomar decisiones</li>
             </ul>
           </aside>
 
-          <div className="hero-visual" aria-label="Galería de proyectos destacados">
+          <div className="hero-visual" aria-label="Galería de equipos de trabajo">
             <div
               className="hero-visual-image"
               style={{ backgroundImage: `url(${activeSlideData.image})` }}
@@ -161,8 +166,8 @@ function Landingpage() {
       <main>
         <section className="section" id="servicios">
           <div className="section-heading">
-            <p className="eyebrow">Servicios</p>
-            <h2>Infraestructura sólida para operar con confianza.</h2>
+            <p className="eyebrow">Herramientas del sistema</p>
+            <h2>Todo lo que tu equipo necesita para trabajar coordinado.</h2>
           </div>
           <div className="services-grid">
             {services.map((service) => (
@@ -177,28 +182,28 @@ function Landingpage() {
 
         <section className="section split-section" id="proyectos">
           <div>
-            <p className="eyebrow">Nuestro enfoque</p>
-            <h2>Una obra pensada para el ritmo del ingenio.</h2>
+            <p className="eyebrow">Una nueva forma de organizarte</p>
+            <h2>Menos tareas manuales. Más claridad para tu equipo.</h2>
             <p className="section-text">
-              Entendemos que cada proyecto afecta la productividad, la seguridad y la continuidad del negocio.
-              Por eso trabajamos con metodología clara, trazabilidad y visión de largo plazo.
+              Centraliza la información de tus colaboradores y consulta cada jornada desde un entorno
+              confiable, accesible y pensado para el trabajo diario.
             </p>
           </div>
 
           <div className="highlight-panel">
-            <h3>Destacamos en</h3>
+            <h3>La información que importa</h3>
             <ul>
-              <li>Diseño de infraestructura para procesos industriales</li>
-              <li>Mejoras en eficiencia operativa</li>
-              <li>Intervenciones con mínima afectación a la producción</li>
+              <li>Asistencias y ausencias en tiempo real</li>
+              <li>Proyectos, jornadas y responsables</li>
+              <li>Acceso seguro para cada perfil</li>
             </ul>
           </div>
         </section>
 
         <section className="section" id="proceso">
           <div className="section-heading">
-            <p className="eyebrow">Proceso</p>
-            <h2>De la idea a la operación, con criterio y disciplina.</h2>
+            <p className="eyebrow">Cómo funciona</p>
+            <h2>Del registro diario a una mejor operación.</h2>
           </div>
           <div className="process-grid">
             {process.map((item) => (
@@ -212,10 +217,10 @@ function Landingpage() {
         </section>
 
         <section className="cta-section" id="contacto">
-          <h2>Impulsamos proyectos que dejan huella en la industria.</h2>
-          <p>Hablemos sobre tu próximo reto de construcción o ingeniería industrial.</p>
-          <a href="mailto:contacto@ingenio-constructora.com" className="btn btn-primary">
-            Escríbenos
+          <h2>Haz que la gestión de tu equipo sea más sencilla.</h2>
+          <p>Entra a la plataforma y empieza a trabajar con información más clara.</p>
+          <a href="/registro" className="btn btn-primary">
+            Crear una cuenta
           </a>
         </section>
       </main>
@@ -223,9 +228,9 @@ function Landingpage() {
       <footer className="footer">
         <div className="footer-content">
           <div className="footer-brand">
-            <h3>Ingenio Constructora</h3>
-            <p>Infraestructura, ingeniería y ejecución para una industria más sólida.</p>
-            <span className="footer-badge">Ingenio • Construcción • Ingeniería</span>
+            <h3>Gestión Empleados</h3>
+            <p>Control de asistencia y gestión de equipos para empresas que avanzan.</p>
+            <span className="footer-badge">Personas • Asistencia • Organización</span>
           </div>
           <div className="footer-section">
             <h4>Dueños del sistema</h4>

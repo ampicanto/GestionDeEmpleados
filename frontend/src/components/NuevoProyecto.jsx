@@ -1,20 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import '../leaflet.css'
+import { useToast } from './Toast.jsx'
 
-export default function NuevoProyecto({ teamMembers = [], onClose = () => {}, onCreated = () => {} }) {
-  const [name, setName] = useState('')
-  const [assigned, setAssigned] = useState([])
-  const [jornada, setJornada] = useState('08:00-17:00')
-  const [lat, setLat] = useState(null)
-  const [lng, setLng] = useState(null)
-  const [radius, setRadius] = useState(50)
+export default function NuevoProyecto({ teamMembers = [], project = null, onClose = () => {}, onSaved = () => {} }) {
+  const [name, setName] = useState(project?.name || '')
+  const [assigned, setAssigned] = useState(project?.assigned_employees || [])
+  const [jornada, setJornada] = useState(project?.jornada || '08:00-17:00')
+  const [lat, setLat] = useState(project?.lat ?? null)
+  const [lng, setLng] = useState(project?.lng ?? null)
+  const [radius, setRadius] = useState(project?.radius_m || 50)
+  const [locationQuery, setLocationQuery] = useState('')
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false)
+  const [locationSearchMessage, setLocationSearchMessage] = useState(null)
   const [savingMessage, setSavingMessage] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const mapRef = useRef(null)
   const markerRef = useRef(null)
   const circleRef = useRef(null)
   const mapContainerRef = useRef(null)
+  const { showToast } = useToast()
 
   const isLocationValid = Number.isFinite(lat) && Number.isFinite(lng)
 
@@ -74,20 +79,53 @@ export default function NuevoProyecto({ teamMembers = [], onClose = () => {}, on
   }
 
   function useMyLocation() {
-    if (!navigator.geolocation) return alert('Geolocalización no disponible')
+    if (!navigator.geolocation) return showToast('Geolocalización no disponible', 'error')
     navigator.geolocation.getCurrentPosition(
       (p) => {
         setLat(p.coords.latitude)
         setLng(p.coords.longitude)
       },
-      (err) => alert('No se pudo obtener ubicación: ' + err.message)
+      (err) => showToast('No se pudo obtener ubicación: ' + err.message, 'error')
     )
+  }
+
+  async function searchLocation(event) {
+    event?.preventDefault()
+    const query = locationQuery.trim()
+    if (!query) return
+
+    setIsSearchingLocation(true)
+    setLocationSearchMessage(null)
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`,
+      )
+      if (!response.ok) throw new Error('No se pudo buscar la ubicación')
+
+      const results = await response.json()
+      const result = results[0]
+      if (!result) {
+        setLocationSearchMessage('No encontramos esa ubicación. Prueba con una dirección más específica.')
+        return
+      }
+
+      const searchedLat = Number(result.lat)
+      const searchedLng = Number(result.lon)
+      setLat(searchedLat)
+      setLng(searchedLng)
+      setLocationQuery(result.display_name)
+    } catch (error) {
+      setLocationSearchMessage(error.message || 'No se pudo buscar la ubicación')
+    } finally {
+      setIsSearchingLocation(false)
+    }
   }
 
   async function submit(e) {
     e.preventDefault()
     if (!isLocationValid) {
-      return alert('Selecciona una ubicación válida en el mapa antes de crear el proyecto.')
+      return showToast('Selecciona una ubicación válida en el mapa antes de crear el proyecto.', 'error')
     }
 
     setIsSubmitting(true)
@@ -97,8 +135,8 @@ export default function NuevoProyecto({ teamMembers = [], onClose = () => {}, on
 
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/projects`, {
-        method: 'POST',
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/projects${project ? `/${project.id}` : ''}`, {
+        method: project ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -108,11 +146,11 @@ export default function NuevoProyecto({ teamMembers = [], onClose = () => {}, on
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.message || 'No se pudo crear el proyecto')
+        throw new Error(result.message || 'No se pudo guardar el proyecto')
       }
 
-      setSavingMessage('Proyecto creado correctamente.')
-      onCreated({ ...payload, id: result.id, status: 'En ejecución', color: 'green' })
+      setSavingMessage(project ? 'Proyecto actualizado correctamente.' : 'Proyecto creado correctamente.')
+      onSaved({ ...project, ...payload, id: result.id || project?.id, status: project?.status || 'En ejecución', color: project?.color || 'green' })
       onClose()
     } catch (error) {
       setSavingMessage(error.message || 'No se pudo conectar con el servidor.')
@@ -126,9 +164,9 @@ export default function NuevoProyecto({ teamMembers = [], onClose = () => {}, on
       <div className="modal-card">
         <header className="modal-card-header">
           <div>
-            <h3>Nuevo proyecto</h3>
+            <h3>{project ? 'Editar proyecto' : 'Nuevo proyecto'}</h3>
             <p className="modal-card-subtitle">
-              Selecciona la ubicación en el mapa, asigna empleados y guarda la información en el servidor.
+              {project ? 'Actualiza la ubicación, la jornada o los empleados asignados.' : 'Selecciona la ubicación en el mapa, asigna empleados y guarda la información en el servidor.'}
             </p>
           </div>
           <button type="button" onClick={onClose} className="btn-secondary btn-close">
@@ -167,30 +205,65 @@ export default function NuevoProyecto({ teamMembers = [], onClose = () => {}, on
           <div className="form-section">
             <div className="section-label-row">
               <label>Ubicación</label>
-              <span className="section-hint">Haz clic en el mapa para fijar la ubicación.</span>
+              <span className="section-hint">Busca una dirección o haz clic en el mapa.</span>
+            </div>
+            <div className="location-search">
+              <input
+                type="search"
+                value={locationQuery}
+                onChange={(e) => setLocationQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') searchLocation(e)
+                }}
+                placeholder="Buscar dirección, ciudad o lugar"
+                aria-label="Buscar ubicación"
+              />
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => searchLocation()}
+                disabled={isSearchingLocation || !locationQuery.trim()}
+              >
+                {isSearchingLocation ? 'Buscando...' : 'Buscar'}
+              </button>
+            </div>
+            {locationSearchMessage && <div className="location-search-message">{locationSearchMessage}</div>}
+            <div className="radius-control">
+              <label htmlFor="project-radius">Radio de ubicación (metros)</label>
+              <div className="radius-input-wrap">
+                <input
+                  id="project-radius"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={radius}
+                  onChange={(e) => setRadius(e.target.value)}
+                />
+                <span>m</span>
+              </div>
             </div>
             <div className="project-map" ref={mapContainerRef} />
           </div>
 
           <div className="field-row">
-            <input
-              className="small-input"
-              placeholder="Lat"
-              value={lat ?? ''}
-              onChange={(e) => setLat(e.target.value.trim() === '' ? null : Number(e.target.value))}
-            />
-            <input
-              className="small-input"
-              placeholder="Lng"
-              value={lng ?? ''}
-              onChange={(e) => setLng(e.target.value.trim() === '' ? null : Number(e.target.value))}
-            />
-            <input
-              className="small-input"
-              placeholder="Radio (m)"
-              value={radius}
-              onChange={(e) => setRadius(e.target.value)}
-            />
+            <label className="coordinate-field">
+              Latitud
+              <input
+                className="small-input"
+                placeholder="Lat"
+                value={lat ?? ''}
+                onChange={(e) => setLat(e.target.value.trim() === '' ? null : Number(e.target.value))}
+              />
+            </label>
+            <label className="coordinate-field">
+              Longitud
+              <input
+                className="small-input"
+                placeholder="Lng"
+                value={lng ?? ''}
+                onChange={(e) => setLng(e.target.value.trim() === '' ? null : Number(e.target.value))}
+              />
+            </label>
             <button type="button" className="btn-secondary" onClick={useMyLocation}>
               Usar mi ubicación
             </button>
@@ -210,7 +283,7 @@ export default function NuevoProyecto({ teamMembers = [], onClose = () => {}, on
               Cancelar
             </button>
             <button type="submit" className="btn-primary" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando...' : 'Crear proyecto'}
+              {isSubmitting ? 'Guardando...' : project ? 'Guardar cambios' : 'Crear proyecto'}
             </button>
           </div>
         </form>

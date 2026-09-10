@@ -55,4 +55,45 @@ router.post('/', async (req, res, next) => {
   }
 })
 
+router.put('/:id', async (req, res, next) => {
+  try {
+    const { name, assigned_employees = [], jornada = '', lat = null, lng = null, radius_m = 50 } = req.body
+    const projectId = Number(req.params.id)
+    const radius = Number(radius_m)
+
+    if (!Number.isInteger(projectId) || projectId <= 0) {
+      return res.status(400).json({ ok: false, message: 'Proyecto no válido' })
+    }
+    if (typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ ok: false, message: 'El nombre es requerido' })
+    }
+    if (!Array.isArray(assigned_employees) || assigned_employees.some((employee) => typeof employee !== 'string')) {
+      return res.status(400).json({ ok: false, message: 'La lista de empleados no es válida' })
+    }
+    if (!Number.isFinite(radius) || radius <= 0) {
+      return res.status(400).json({ ok: false, message: 'El radio debe ser mayor que cero' })
+    }
+    if ((lat !== null && !Number.isFinite(Number(lat))) || (lng !== null && !Number.isFinite(Number(lng)))) {
+      return res.status(400).json({ ok: false, message: 'La ubicación no es válida' })
+    }
+
+    await ensureTable()
+    const conn = await pool.getConnection()
+    const [result] = await conn.query(
+      `UPDATE projects
+       SET name = ?, assigned_employees = ?, jornada = ?, lat = ?, lng = ?, radius_m = ?
+       WHERE id = ?`,
+      [name.trim(), JSON.stringify(assigned_employees), String(jornada || '').trim(), lat, lng, radius, projectId]
+    )
+    conn.release()
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ ok: false, message: 'Proyecto no encontrado' })
+    }
+    return res.json({ ok: true, message: 'Proyecto actualizado correctamente', id: projectId })
+  } catch (err) {
+    return next(err)
+  }
+})
+
 module.exports = router

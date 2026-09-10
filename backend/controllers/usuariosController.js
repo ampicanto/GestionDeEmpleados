@@ -1,32 +1,143 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const usuariosModel = require("../models/usuariosModel");
-const { enviarBienvenidaEmpleado } = require("../services/emailService");
+const { enviarBienvenidaEmpleado, enviarCorreoRecuperacion } = require("../services/emailService");
+
+function hashToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function obtenerUrlFrontend() {
+  return (process.env.FRONTEND_URL || "http://localhost:5173").split(",")[0].trim();
+}
+
+async function solicitarRecuperacion(req, res) {
+  const email = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const respuesta = {
+    ok: true,
+    message: "Si existe una cuenta activa con ese correo, recibirás un enlace de recuperación."
+  };
+
+  if (!email || email.length > 150 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(200).json(respuesta);
+  }
+
+  try {
+    const usuario = await usuariosModel.obtenerUsuarioParaRecuperacion(email);
+    if (!usuario) return res.status(200).json(respuesta);
+
+    const tipo = usuario.rol_id === 3 ? "pin" : "password";
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiraEn = new Date(Date.now() + 60 * 60 * 1000);
+    await usuariosModel.guardarTokenRecuperacion({
+      usuarioId: usuario.id,
+      tokenHash: hashToken(token),
+      tipo,
+      expiraEn
+    });
+    await enviarCorreoRecuperacion({
+      email: usuario.email,
+      nombre: usuario.nombre,
+      tipo,
+      enlace: `${obtenerUrlFrontend()}/recuperacion?token=${token}`
+    });
+  } catch (error) {
+    console.error("No se pudo solicitar la recuperación:", error.message);
+  }
+
+  return res.status(200).json(respuesta);
+}
+
+async function validarTokenRecuperacion(req, res) {
+  const token = typeof req.query.token === "string" ? req.query.token : "";
+
+  if (!/^[a-f0-9]{64}$/.test(token)) {
+    return res.status(400).json({ ok: false, message: "El enlace de recuperación no es válido" });
+  }
+
+  try {
+    const datosToken = await usuariosModel.obtenerTokenRecuperacion(hashToken(token));
+    if (!datosToken) {
+      return res.status(400).json({ ok: false, message: "El enlace ya caducó o fue utilizado" });
+    }
+
+    return res.status(200).json({ ok: true, tipo: datosToken.tipo });
+  } catch (error) {
+    console.error("No se pudo validar el enlace de recuperación:", error.message);
+    return res.status(500).json({ ok: false, message: "No se pudo validar el enlace" });
+  }
+}
+
+async function restablecerCredencial(req, res) {
+  const token = typeof req.body.token === "string" ? req.body.token : "";
+  const nuevaCredencial = typeof req.body.nuevaCredencial === "string" ? req.body.nuevaCredencial.trim() : "";
+
+  if (!/^[a-f0-9]{64}$/.test(token)) {
+    return res.status(400).json({ ok: false, message: "El enlace de recuperación no es válido" });
+  }
+
+  try {
+    const datosToken = await usuariosModel.obtenerTokenRecuperacion(hashToken(token));
+    const credencialValida = datosToken?.tipo === "pin"
+      ? /^\d{4}$/.test(nuevaCredencial)
+      : nuevaCredencial.length >= 8 && nuevaCredencial.length <= 128;
+
+    if (!datosToken || !credencialValida) {
+      return res.status(400).json({
+        ok: false,
+        message: datosToken?.tipo === "pin" ? "El PIN debe tener exactamente 4 números" : "La contraseña debe tener entre 8 y 128 caracteres"
+      });
+    }
+
+    const resultado = await usuariosModel.actualizarCredencialConToken({
+      tokenId: datosToken.id,
+      usuarioId: datosToken.usuario_id,
+      tipo: datosToken.tipo,
+      hash: await bcrypt.hash(nuevaCredencial, 10)
+    });
+
+    if (!resultado.affectedRows) {
+      return res.status(400).json({ ok: false, message: "El enlace ya caducó o fue utilizado" });
+    }
+
+    return res.status(200).json({ ok: true, message: datosToken.tipo === "pin" ? "PIN actualizado correctamente" : "Contraseña actualizada correctamente" });
+  } catch (error) {
+    console.error("No se pudo restablecer la credencial:", error.message);
+    return res.status(500).json({ ok: false, message: "No se pudo restablecer la credencial" });
+  }
+}
 
 async function iniciarSesion(req, res) {
   try {
     const { email, password, dni, pin } = req.body;
 
-    if ((!email || !password) && (!dni || !pin)) {
+    const usaEmail = typeof email === "string" && typeof password === "string" && !dni && !pin;
+    const usaDni = typeof dni === "string" && typeof pin === "string" && !email && !password;
+
+    if (!usaEmail && !usaDni) {
       return res.status(400).json({
         ok: false,
         message: "Ingresa email y contraseña, o DNI y PIN"
       });
     }
 
-    const credencial = email || dni;
-    const usuario = await usuariosModel.obtenerUsuarioPorCredencial(credencial);
+    const credencial = (usaEmail ? email : dni).trim().toLowerCase();
+    const valor = (usaEmail ? password : pin).trim();
+    const credencialValidaPorFormato = usaEmail
+      ? credencial.length <= 150 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(credencial) && valor.length >= 8 && valor.length <= 128
+      : /^\d{4,20}$/.test(credencial) && /^\d+$/.test(valor);
 
-    if (!usuario || !usuario.activo) {
-      return res.status(401).json({
-        ok: false,
-        message: "Credenciales inválidas"
-      });
+    if (!credencialValidaPorFormato) {
+      return res.status(401).json({ ok: false, message: "Credenciales inválidas" });
     }
 
-    const hash = email ? usuario.password_hash : usuario.pin_hash;
-    const valor = email ? password : pin;
-    const credencialValida = hash && await bcrypt.compare(valor, hash);
+    const usuario = await usuariosModel.obtenerUsuarioPorCredencial(credencial);
+
+    const hash = usuario && usuario.activo
+      ? (usaEmail ? usuario.password_hash : usuario.pin_hash)
+      : "$2b$10$7EqJtq98hPqEX7fNZaFWoOeN8sD9uF8k5T6q3Z7x3M3dHqW5Yh1eK";
+    const credencialValida = await bcrypt.compare(valor, hash);
 
     if (!credencialValida) {
       return res.status(401).json({
@@ -35,9 +146,13 @@ async function iniciarSesion(req, res) {
       });
     }
 
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ ok: false, message: "La autenticación no está configurada" });
+    }
+
     const token = jwt.sign(
       { id: usuario.id, rol_id: usuario.rol_id, local_id: usuario.local_id },
-      process.env.JWT_SECRET || "cambia-esta-clave-en-produccion",
+      process.env.JWT_SECRET,
       { expiresIn: "8h" }
     );
 
@@ -117,12 +232,26 @@ async function registrarAdministrador(req, res) {
 async function registrarEmpleado(req, res) {
   try {
     const { nombre, email, dni, pin } = req.body;
+    const fotoDni = req.files?.fotoDni?.[0];
+    const fotoPerfil = req.files?.fotoPerfil?.[0];
 
-    if (!nombre || !email || !dni || !pin) {
+    const esImagenValida = (archivo) => {
+      const { buffer } = archivo;
+      const comienzaCon = (firma, offset = 0) => firma.every((byte, indice) => buffer[offset + indice] === byte);
+      return comienzaCon([0xff, 0xd8, 0xff])
+        || comienzaCon([0x89, 0x50, 0x4e, 0x47])
+        || (comienzaCon([0x52, 0x49, 0x46, 0x46]) && comienzaCon([0x57, 0x45, 0x42, 0x50], 8));
+    };
+
+    if (!nombre || !email || !dni || !pin || !fotoDni || !fotoPerfil) {
       return res.status(400).json({
         ok: false,
-        message: "Nombre, email, DNI y PIN son obligatorios"
+        message: "Nombre, email, DNI, PIN y ambas fotos son obligatorios"
       });
+    }
+
+    if (!esImagenValida(fotoDni) || !esImagenValida(fotoPerfil)) {
+      return res.status(400).json({ ok: false, message: "Las fotos deben ser imágenes JPEG, PNG o WebP válidas" });
     }
 
     if (typeof dni !== "string" || !/^\d{4,20}$/.test(dni.trim())) {
@@ -132,10 +261,10 @@ async function registrarEmpleado(req, res) {
       });
     }
 
-    if (pin.length < 4 || pin.length > 8 || !/^\d+$/.test(pin)) {
+    if (pin.length !== 4 || !/^\d+$/.test(pin)) {
       return res.status(400).json({
         ok: false,
-        message: "El PIN debe tener entre 4 y 8 números"
+        message: "El PIN debe tener exactamente 4 números"
       });
     }
 
@@ -150,6 +279,8 @@ async function registrarEmpleado(req, res) {
       password_hash: null,
       dni: dniNormalizado,
       pin_hash: await bcrypt.hash(pin, 10),
+      foto_dni_data: `data:${fotoDni.mimetype};base64,${fotoDni.buffer.toString("base64")}`,
+      foto_perfil_data: `data:${fotoPerfil.mimetype};base64,${fotoPerfil.buffer.toString("base64")}`,
       local_id: null,
       activo: true
     });
@@ -225,6 +356,82 @@ async function listarEmpleados(req, res) {
       ok: false,
       message: "Error al obtener los empleados",
     });
+  }
+}
+
+async function listarPuestos(req, res) {
+  try {
+    const puestos = await usuariosModel.obtenerPuestos();
+
+    return res.status(200).json({
+      ok: true,
+      data: puestos,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      ok: false,
+      message: "Error al obtener los puestos",
+    });
+  }
+}
+
+async function obtenerPerfil(req, res) {
+  try {
+    if (Number(req.usuario.rol_id) !== 3) {
+      return res.status(403).json({ ok: false, message: "Solo los empleados pueden consultar su perfil" })
+    }
+
+    const usuario = await usuariosModel.obtenerPerfilUsuario(req.usuario.id)
+    if (!usuario) {
+      return res.status(404).json({ ok: false, message: "Usuario no encontrado" })
+    }
+
+    return res.json({ ok: true, data: usuario })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({ ok: false, message: "No se pudo cargar el perfil" })
+  }
+}
+
+async function asignarPuesto(req, res) {
+  try {
+    const { id } = req.params;
+    const { puesto_id, monto } = req.body;
+    const puestoId = Number(puesto_id);
+    const montoNumerico = Number(monto);
+
+    if (!Number.isInteger(puestoId) || puestoId <= 0) {
+      return res.status(400).json({ ok: false, message: "Selecciona un puesto válido" });
+    }
+    if (!Number.isFinite(montoNumerico) || montoNumerico <= 0) {
+      return res.status(400).json({ ok: false, message: "Ingresa una liquidación mayor que cero" });
+    }
+
+    const puestos = await usuariosModel.obtenerPuestos();
+    const puesto = puestos.find((item) => Number(item.id) === puestoId);
+    if (!puesto) {
+      return res.status(400).json({ ok: false, message: "El puesto no está disponible" });
+    }
+
+    const resultado = await usuariosModel.asignarPuestoYSalario(
+      id,
+      puestoId,
+      montoNumerico.toFixed(2),
+      puesto.tipo_liquidacion,
+      req.usuario.id
+    );
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ ok: false, message: "Empleado no encontrado" });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      message: "Puesto y liquidación asignados correctamente",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ ok: false, message: "Error al asignar el puesto" });
   }
 }
 
@@ -558,10 +765,16 @@ async function desactivarUsuario(req, res) {
 
 module.exports = {
   iniciarSesion,
+  solicitarRecuperacion,
+  validarTokenRecuperacion,
+  restablecerCredencial,
   registrarAdministrador,
   registrarEmpleado,
   listarUsuarios,
   listarEmpleados,
+  listarPuestos,
+  obtenerPerfil,
+  asignarPuesto,
   obtenerUsuario,
   crearUsuario,
   actualizarUsuario,
