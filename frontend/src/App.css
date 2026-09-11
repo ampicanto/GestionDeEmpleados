@@ -1,5 +1,7 @@
 .landing-page {
   min-height: 100vh;
+  font-size: 16px;
+  line-height: 1.6;
   background:
     radial-gradient(circle at top left, rgba(123, 199, 255, 0.2), transparent 28%),
     radial-gradient(circle at 85% 10%, rgba(172, 236, 197, 0.25), transparent 24%),
@@ -3342,24 +3344,30 @@
 }
 
 .landing-page .hero-content h1,
-.landing-page .section-heading h2,
-.landing-page .split-section h2,
-.landing-page .cta-section h2 {
+.landing-page .hero-card h2 {
   color: #ffffff;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.025em;
 }
 
 .landing-page .hero-content h1 {
   max-width: 680px;
-  font-size: clamp(2.8rem, 5.4vw, 5.2rem);
+  font-size: clamp(2.2rem, 3.8vw, 3.6rem);
 }
 
-.landing-page .hero-text,
-.landing-page .section-text,
-.landing-page .service-card p,
-.landing-page .process-card p,
-.landing-page .cta-section p {
+.landing-page .section-heading h2,
+.landing-page .split-section h2,
+.landing-page .cta-section h2 {
+  color: #172d61;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+}
+
+.landing-page .hero-text {
   color: #d7e7f4;
+}
+
+.landing-page .section-text,
+.landing-page .cta-section p {
+  color: #4a5f72;
 }
 
 .landing-page .hero-text {
@@ -3514,6 +3522,18 @@
   color: #172d61;
 }
 
+.landing-page .section-heading .eyebrow,
+.landing-page .split-section .eyebrow {
+  color: #007ebe;
+}
+
+.landing-page .service-card p,
+.landing-page .process-card p,
+.landing-page .highlight-panel li,
+.landing-page .highlight-panel p {
+  color: #4a5f72;
+}
+
 .landing-page .service-icon {
   color: #007ebe;
   background: rgba(0, 126, 190, 0.1);
@@ -3521,6 +3541,124 @@
 
 .landing-page .process-step {
   color: #007ebe;
+}
+
+.landing-page .cta-section {
+  background: #ffffff;
+}
+
+@media (max-width: 820px) {
+  .landing-page {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .landing-page .hero-section {
+    min-height: auto;
+    padding: 28px 24px 48px;
+    gap: 28px;
+  }
+
+  .landing-page .hero-content {
+    padding-top: 48px;
+  }
+
+  .landing-page .topbar-actions {
+    position: static;
+    margin-bottom: 24px;
+  }
+
+  .landing-page .hero-stack {
+    gap: 20px;
+  }
+
+  .landing-page .hero-card {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: auto;
+  }
+
+  .landing-page .hero-visual {
+    min-height: 390px;
+  }
+
+  .landing-page .section {
+    padding-top: 64px;
+    padding-bottom: 64px;
+  }
+}
+
+@media (max-width: 560px) {
+  .landing-page .hero-section {
+    padding: 22px 18px 34px;
+    border-radius: 0 0 18px 18px;
+  }
+
+  .landing-page .landing-brand {
+    font-size: 1rem;
+  }
+
+  .landing-page .landing-brand img {
+    width: 46px;
+    height: 46px;
+  }
+
+  .landing-page .hero-content h1 {
+    font-size: clamp(2rem, 10vw, 2.7rem);
+  }
+
+  .landing-page .hero-text,
+  .landing-page .section-text,
+  .landing-page .service-card p,
+  .landing-page .process-card p,
+  .landing-page .cta-section p {
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }
+
+  .landing-page .hero-actions,
+  .landing-page .topbar-actions {
+    gap: 8px;
+  }
+
+  .landing-page .hero-actions .btn,
+  .landing-page .topbar-btn {
+    flex: 1 1 100%;
+  }
+
+  .landing-page .stats-grid {
+    grid-template-columns: 1fr;
+    margin-top: 28px;
+  }
+
+  .landing-page .stat-card,
+  .landing-page .stat-card + .stat-card {
+    padding: 12px 0;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .landing-page .stat-card:last-child {
+    border-bottom: 0;
+  }
+
+  .landing-page .hero-visual {
+    min-height: 330px;
+  }
+
+  .landing-page .section-heading h2,
+  .landing-page .split-section h2,
+  .landing-page .cta-section h2 {
+    font-size: 1.8rem;
+  }
+
+  .landing-page .service-card,
+  .landing-page .process-card,
+  .landing-page .highlight-panel,
+  .landing-page .cta-section {
+    padding: 20px;
+  }
 }
 
 .landing-page .highlight-panel li {
@@ -3760,6 +3898,43 @@
   .landing-page .section {
     padding-top: 64px;
     padding-bottom: 64px;
+  }
+}
+
+/* Escala final de la portada para mantener la jerarquia visual estable. */
+.landing-page .landing-brand {
+  gap: 12px;
+  margin-bottom: 22px;
+  font-size: 1.15rem;
+}
+
+.landing-page .landing-brand img {
+  width: 58px;
+  height: 58px;
+  border-radius: 10px;
+}
+
+.landing-page .hero-content h1 {
+  font-size: clamp(2.2rem, 3.8vw, 3.6rem);
+}
+
+@media (max-width: 640px) {
+  .landing-page .hero-content h1 {
+    font-size: clamp(2.15rem, 9vw, 3.2rem);
+  }
+
+  .landing-page .landing-brand {
+    margin-bottom: 22px;
+    font-size: 1.05rem;
+  }
+
+  .landing-page .landing-brand img {
+    width: 50px;
+    height: 50px;
+  }
+
+  .landing-page .hero-visual {
+    min-height: 340px;
   }
 }
 
