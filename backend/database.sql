@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
   password_hash VARCHAR(255) NULL,
   dni VARCHAR(20) NULL UNIQUE,
   pin_hash VARCHAR(255) NULL,
+  foto_dni_data MEDIUMTEXT NULL,
+  foto_perfil_data MEDIUMTEXT NULL,
   local_id INT UNSIGNED NULL,
   activo BOOLEAN NOT NULL DEFAULT TRUE,
   creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -78,6 +80,19 @@ CREATE TABLE IF NOT EXISTS usuarios (
   ),
   INDEX idx_usuarios_local_activo (local_id, activo),
   INDEX idx_usuarios_puesto (puesto_id)
+);
+
+CREATE TABLE IF NOT EXISTS recuperacion_credenciales (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  usuario_id INT UNSIGNED NOT NULL,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  tipo ENUM('password', 'pin') NOT NULL,
+  expira_en DATETIME NOT NULL,
+  usado_en DATETIME NULL,
+  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_recuperacion_usuario (usuario_id),
+  INDEX idx_recuperacion_expira (expira_en),
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS turnos (
@@ -123,6 +138,7 @@ CREATE TABLE IF NOT EXISTS fichajes (
   usuario_id INT UNSIGNED NOT NULL,
   local_id INT UNSIGNED NULL,
   tipo ENUM('entrada', 'salida') NOT NULL,
+  es_hora_extra BOOLEAN NOT NULL DEFAULT FALSE,
   fecha_hora DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   latitud DECIMAL(10,7) NULL,
   longitud DECIMAL(10,7) NULL,
@@ -164,12 +180,30 @@ CREATE TABLE IF NOT EXISTS ausencias (
   fecha_inicio DATE NOT NULL,
   fecha_fin DATE NOT NULL,
   observaciones TEXT NULL,
+  notificacion_leida BOOLEAN NOT NULL DEFAULT FALSE,
+  estado ENUM('pendiente', 'aceptada', 'rechazada') NOT NULL DEFAULT 'pendiente',
+  revisado_por INT UNSIGNED NULL,
+  revisado_en DATETIME NULL,
   creado_por INT UNSIGNED NULL,
   creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+  FOREIGN KEY (revisado_por) REFERENCES usuarios(id),
   FOREIGN KEY (creado_por) REFERENCES usuarios(id),
   CONSTRAINT chk_ausencia_fechas CHECK (fecha_fin >= fecha_inicio),
   INDEX idx_ausencias_usuario_fechas (usuario_id, fecha_inicio, fecha_fin)
+);
+
+CREATE TABLE IF NOT EXISTS notificaciones_push (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  usuario_id INT UNSIGNED NOT NULL,
+  endpoint VARCHAR(500) NOT NULL,
+  p256dh VARCHAR(255) NOT NULL,
+  auth VARCHAR(255) NOT NULL,
+  creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_notificacion_push_endpoint (endpoint),
+  INDEX idx_notificaciones_push_usuario (usuario_id),
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS salarios (

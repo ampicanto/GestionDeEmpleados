@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useToast } from './Toast.jsx';
 
 // Calcula distancia en metros entre dos coordenadas (Haversine)
 function distanceMeters(lat1, lon1, lat2, lon2) {
@@ -26,6 +27,7 @@ export default function Geolocalizacion({
 	const [allowedFromServer, setAllowedFromServer] = useState(null);
 	const [preview, setPreview] = useState(null);
 	const [error, setError] = useState(null);
+	const { showToast } = useToast();
 
 	// Obtener ubicación permitida desde backend si no se pasa por props
 	useEffect(() => {
@@ -86,7 +88,7 @@ export default function Geolocalizacion({
 		const file = e.target.files && e.target.files[0];
 		if (!file) return;
 		if (!inside) {
-			alert("No estás dentro del rango permitido. No se puede tomar foto.");
+			showToast("No estás dentro del rango permitido. No se puede tomar foto.", "error");
 			return;
 		}
 		const url = URL.createObjectURL(file);

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FaArrowLeft, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaIdCard } from 'react-icons/fa'
+import systemLogo from '../assets/images.png'
 
 function Login() {
   const [showPassword, setShowPassword] = useState(false)
@@ -49,16 +50,16 @@ function Login() {
         </Link>
 
         <div className="auth-brand">
-          <span className="auth-brand-mark">IC</span>
+          <img className="auth-brand-mark" src={systemLogo} alt="Gestión Empleados" />
           <div>
-            <h2>Ingenio Constructora</h2>
+            <h2>Gestión Empleados</h2>
             <p>Acceso seguro</p>
           </div>
         </div>
 
         <h1>Iniciar sesión</h1>
         <p className="auth-description">
-          Ingresa tus credenciales para entrar al panel de proyectos y operaciones.
+          Ingresa tus credenciales para gestionar tu equipo y consultar la información de tu jornada.
         </p>
 
         <div className="auth-mode-toggle">
@@ -81,14 +82,14 @@ function Login() {
                 <span>DNI</span>
                 <div className="auth-input">
                   <FaIdCard />
-                  <input type="text" placeholder="12345678" value={dni} onChange={(event) => setDni(event.target.value)} required />
+                  <input type="text" inputMode="numeric" placeholder="12345678" value={dni} onChange={(event) => setDni(event.target.value.replace(/\D/g, ''))} maxLength={20} required />
                 </div>
               </label>
               <label className="auth-field">
                 <span>PIN</span>
                 <div className="auth-input">
                   <FaLock />
-                  <input type="password" inputMode="numeric" placeholder="1234" value={pin} onChange={(event) => setPin(event.target.value)} required />
+                  <input type="password" inputMode="numeric" placeholder="PIN numérico" value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, ''))} minLength={1} required />
                 </div>
               </label>
             </>

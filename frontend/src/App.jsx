@@ -7,11 +7,13 @@ import Login from './pages/Login.jsx'
 import Registro from './pages/Registro.jsx'
 import Recuperacion from './pages/Recuperacion.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
+import { ToastProvider } from './components/Toast.jsx'
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
         <Route path="/" element={<Landingpage />} />
         <Route
           path="/admin"
@@ -32,8 +34,9 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/recuperacion" element={<Recuperacion />} />
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   )
 }
 
